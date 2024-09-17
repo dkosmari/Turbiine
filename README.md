@@ -1,6 +1,6 @@
 # Turbiine
 
-> Turbiine is the turbocharged shortcut to gaming greatness.
+> *Turbiine* is the turbocharged shortcut to gaming greatness.
 
 > Blast your way to victory with the ultimate gaming weapon!
 

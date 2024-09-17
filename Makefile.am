@@ -1,6 +1,8 @@
 EXTRA_DIST = \
 	bootstrap \
 	COPYING \
+	docker-build.sh \
+	Dockerfile \
 	README.md
 
 
