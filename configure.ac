@@ -4,9 +4,9 @@
 AC_PREREQ([2.69])
 AC_INIT([Turbiine],
         [0.0],
-        [https://github.com/dkosmari/Turbiinator/issues],
+        [https://github.com/dkosmari/Turbiine/issues],
         [turbiine],
-        [https://github.com/dkosmari/Turbiinator])
+        [https://github.com/dkosmari/Turbiine])
 AC_CONFIG_SRCDIR([src/main.cpp])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
