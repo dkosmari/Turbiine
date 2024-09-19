@@ -8,12 +8,15 @@
 
 #include <wupsxx/bool_item.hpp>
 #include <wupsxx/button_combo_item.hpp>
+#include <wupsxx/int_item.hpp>
 #include <wupsxx/category.hpp>
 #include <wupsxx/init.hpp>
 #include <wupsxx/logger.hpp>
 #include <wupsxx/storage.hpp>
 
 #include "cfg.hpp"
+
+#include "reset_turbo_item.hpp"
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -38,6 +41,8 @@ namespace cfg {
 
         const bool enabled = false;
 
+        const int period = 1;
+
         const array<button_combo, max_toggle_combos> toggle_combo = {
             vpad::button_set{VPAD_BUTTON_TV, VPAD_BUTTON_ZL},
         };
@@ -47,6 +52,8 @@ namespace cfg {
 
     bool enabled = defaults::enabled;
 
+    int period = defaults::period;
+
     array<button_combo, max_toggle_combos> toggle_combo = defaults::toggle_combo;
 
 
@@ -54,6 +61,8 @@ namespace cfg {
     load()
     {
         wups::storage::load_or_init("enabled", enabled, defaults::enabled);
+
+        wups::storage::load_or_init("period", period, defaults::period);
 
         for (unsigned i = 0; i < max_toggle_combos; ++i)
             wups::storage::load_or_init("toggle" + std::to_string(i + 1),
@@ -66,6 +75,8 @@ namespace cfg {
     save()
     {
         wups::storage::store("enabled", enabled);
+
+        wups::storage::store("period", period);
 
         for (unsigned i = 0; i < max_toggle_combos; ++i)
             wups::storage::store("toggle" + std::to_string(i + 1),
@@ -85,7 +96,12 @@ namespace cfg {
                                    defaults::enabled,
                                    "yes", "no"));
 
-        // TODO: add a button item to turn all turbo states off.
+        root.add(int_item::create("Period",
+                                  period,
+                                  defaults::period,
+                                  1, 100));
+
+        root.add(reset_turbo_item::create());
 
         for  (unsigned i = 0; i < max_toggle_combos; ++i)
             root.add(button_combo_item::create("Toggle " + std::to_string(i + 1),

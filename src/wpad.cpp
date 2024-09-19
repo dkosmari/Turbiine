@@ -30,8 +30,10 @@
 
 
 using std::array;
-using std::uint32_t;
 using std::int32_t;
+using std::uint32_t;
+using std::uint8_t;
+using std::views::enumerate;
 
 using wups::utils::button_combo;
 
@@ -61,105 +63,131 @@ namespace wpad {
     constexpr unsigned max_wpads = 7;
 
 
-    constexpr array core_button_list = {
-        WPAD_BUTTON_LEFT,
-        WPAD_BUTTON_RIGHT,
-        WPAD_BUTTON_DOWN,
-        WPAD_BUTTON_UP,
-        WPAD_BUTTON_PLUS,
-        WPAD_BUTTON_2,
-        WPAD_BUTTON_1,
-        WPAD_BUTTON_B,
-        WPAD_BUTTON_A,
-        WPAD_BUTTON_MINUS,
-    };
+    namespace core {
 
-    constexpr unsigned max_core_buttons = core_button_list.size();
+        constexpr array button_list = {
+            WPAD_BUTTON_LEFT,
+            WPAD_BUTTON_RIGHT,
+            WPAD_BUTTON_DOWN,
+            WPAD_BUTTON_UP,
+            WPAD_BUTTON_PLUS,
+            WPAD_BUTTON_2,
+            WPAD_BUTTON_1,
+            WPAD_BUTTON_B,
+            WPAD_BUTTON_A,
+            WPAD_BUTTON_MINUS,
+        };
 
-    using core_button_set = std::bitset<max_core_buttons>;
+        constexpr unsigned max_buttons = button_list.size();
 
-    struct core_state_t {
-        core_button_set turbo;
-        core_button_set fake_hold;
-        core_button_set suppress;
-    };
+        using button_set = std::bitset<max_buttons>;
 
+        struct pad_state_t {
+            button_set turbo;
+            button_set fake_hold;
+            button_set suppress;
+            array<uint8_t, max_buttons> age{};
+        };
 
-    constexpr array nunchuk_button_list = {
-        WPAD_NUNCHUK_BUTTON_Z,
-        WPAD_NUNCHUK_BUTTON_C,
-    };
-    constexpr unsigned max_nunchuk_buttons = nunchuk_button_list.size();
-    using nunchuk_button_set = std::bitset<max_nunchuk_buttons>;
-    struct nunchuk_state_t {
-        nunchuk_button_set turbo;
-        nunchuk_button_set fake_hold;
-        nunchuk_button_set suppress;
-    };
+    } // namespace core
 
 
-    constexpr array classic_button_list = {
-        WPAD_CLASSIC_BUTTON_UP,
-        WPAD_CLASSIC_BUTTON_LEFT,
-        WPAD_CLASSIC_BUTTON_ZR,
-        WPAD_CLASSIC_BUTTON_X,
-        WPAD_CLASSIC_BUTTON_A,
-        WPAD_CLASSIC_BUTTON_Y,
-        WPAD_CLASSIC_BUTTON_B,
-        WPAD_CLASSIC_BUTTON_ZL,
-        WPAD_CLASSIC_BUTTON_R,
-        WPAD_CLASSIC_BUTTON_PLUS,
-        WPAD_CLASSIC_BUTTON_MINUS,
-        WPAD_CLASSIC_BUTTON_L,
-        WPAD_CLASSIC_BUTTON_DOWN,
-        WPAD_CLASSIC_BUTTON_RIGHT,
-    };
-    constexpr unsigned max_classic_buttons = classic_button_list.size();
-    using classic_button_set = std::bitset<max_classic_buttons>;
-    struct classic_state_t {
-        classic_button_set turbo;
-        classic_button_set fake_hold;
-        classic_button_set suppress;
-    };
+    namespace nunchuk {
+
+        constexpr array button_list = {
+            WPAD_NUNCHUK_BUTTON_Z,
+            WPAD_NUNCHUK_BUTTON_C,
+        };
+
+        constexpr unsigned max_buttons = button_list.size();
+
+        using button_set = std::bitset<max_buttons>;
+
+        struct pad_state_t {
+            button_set turbo;
+            button_set fake_hold;
+            button_set suppress;
+            array<uint8_t, max_buttons> age{};
+        };
+
+    } // namespace nunchuk
 
 
-    constexpr array pro_button_list = {
-        WPAD_PRO_BUTTON_UP,
-        WPAD_PRO_BUTTON_LEFT,
-        WPAD_PRO_TRIGGER_ZR,
-        WPAD_PRO_BUTTON_X,
-        WPAD_PRO_BUTTON_A,
-        WPAD_PRO_BUTTON_Y,
-        WPAD_PRO_BUTTON_B,
-        WPAD_PRO_TRIGGER_ZL,
-        WPAD_PRO_TRIGGER_R,
-        WPAD_PRO_BUTTON_PLUS,
-        WPAD_PRO_BUTTON_MINUS,
-        WPAD_PRO_TRIGGER_L,
-        WPAD_PRO_BUTTON_DOWN,
-        WPAD_PRO_BUTTON_RIGHT,
-    };
+    namespace classic {
 
-    constexpr unsigned max_pro_buttons = pro_button_list.size();
+        constexpr array button_list = {
+            WPAD_CLASSIC_BUTTON_UP,
+            WPAD_CLASSIC_BUTTON_LEFT,
+            WPAD_CLASSIC_BUTTON_ZR,
+            WPAD_CLASSIC_BUTTON_X,
+            WPAD_CLASSIC_BUTTON_A,
+            WPAD_CLASSIC_BUTTON_Y,
+            WPAD_CLASSIC_BUTTON_B,
+            WPAD_CLASSIC_BUTTON_ZL,
+            WPAD_CLASSIC_BUTTON_R,
+            WPAD_CLASSIC_BUTTON_PLUS,
+            WPAD_CLASSIC_BUTTON_MINUS,
+            WPAD_CLASSIC_BUTTON_L,
+            WPAD_CLASSIC_BUTTON_DOWN,
+            WPAD_CLASSIC_BUTTON_RIGHT,
+        };
 
-    using pro_button_set = std::bitset<max_pro_buttons>;
+        constexpr unsigned max_buttons = button_list.size();
 
-    struct pro_state_t {
-        pro_button_set turbo;
-        pro_button_set fake_hold;
-        pro_button_set suppress;
-    };
+        using button_set = std::bitset<max_buttons>;
+
+        struct pad_state_t {
+            button_set turbo;
+            button_set fake_hold;
+            button_set suppress;
+            array<uint8_t, max_buttons> age{};
+        };
+
+    } // namespace classic
+
+
+    namespace pro {
+
+        constexpr array button_list = {
+            WPAD_PRO_BUTTON_UP,
+            WPAD_PRO_BUTTON_LEFT,
+            WPAD_PRO_TRIGGER_ZR,
+            WPAD_PRO_BUTTON_X,
+            WPAD_PRO_BUTTON_A,
+            WPAD_PRO_BUTTON_Y,
+            WPAD_PRO_BUTTON_B,
+            WPAD_PRO_TRIGGER_ZL,
+            WPAD_PRO_TRIGGER_R,
+            WPAD_PRO_BUTTON_PLUS,
+            WPAD_PRO_BUTTON_MINUS,
+            WPAD_PRO_TRIGGER_L,
+            WPAD_PRO_BUTTON_DOWN,
+            WPAD_PRO_BUTTON_RIGHT,
+        };
+
+        constexpr unsigned max_buttons = button_list.size();
+
+        using button_set = std::bitset<max_buttons>;
+
+        struct pad_state_t {
+            button_set turbo;
+            button_set fake_hold;
+            button_set suppress;
+            array<uint8_t, max_buttons> age{};
+        };
+
+    } // namespace pro
 
 
     using ext_state_t = std::variant<std::monostate,
-                                     nunchuk_state_t,
-                                     classic_state_t,
-                                     pro_state_t>;
+                                     nunchuk::pad_state_t,
+                                     classic::pad_state_t,
+                                     pro::pad_state_t>;
 
 
     struct pad_state_t {
 
-        core_state_t core;
+        core::pad_state_t core;
         ext_state_t  ext;
         bool toggling = false;
 
@@ -181,10 +209,13 @@ namespace wpad {
 
             case WPAD_EXT_CORE:
             case WPAD_EXT_MPLUS:
+                // Keep all held buttons suppressed
+                for (auto [idx, btn] : enumerate(core::button_list))
+                    if (status->buttons & btn)
+                        core.suppress.set(idx);
                 // Clear buttons.
                 status->buttons = 0;
-                // Supress all.
-                core.suppress.set();
+                // Get rid of any extension state.
                 ext = std::monostate{};
                 break;
 
@@ -192,11 +223,17 @@ namespace wpad {
             case WPAD_EXT_MPLUS_NUNCHUK:
                 {
                     auto xstatus = reinterpret_cast<WPADNunchukStatus*>(status);
-                    // Clear buttons.
+                    // Keep all held core buttons suppressed.
+                    for (auto [idx, btn] : enumerate(core::button_list))
+                        if (xstatus->core.buttons & btn)
+                            core.suppress.set(idx);
+                    // Keep all nunchuk buttons suppressed.
+                    auto& xext = ensure<nunchuk::pad_state_t>(ext);
+                    for (auto [idx, btn] : enumerate(nunchuk::button_list))
+                        if (xstatus->core.buttons & btn)
+                            xext.suppress.set(idx);
+                    // Clear buttons: both core and nunchuk are stored here.
                     xstatus->core.buttons = 0;
-                    // Supress all.
-                    core.suppress.set();
-                    ensure<nunchuk_state_t>(ext).suppress.set();
                 }
                 break;
 
@@ -204,22 +241,32 @@ namespace wpad {
             case WPAD_EXT_MPLUS_CLASSIC:
                 {
                     auto xstatus = reinterpret_cast<WPADClassicStatus*>(status);
+                    // Keep all held core buttons suppressed.
+                    for (auto [idx, btn] : enumerate(core::button_list))
+                        if (xstatus->core.buttons & btn)
+                            core.suppress.set(idx);
+                    // Keep all classic buttons suppressed.
+                    auto& xext = ensure<classic::pad_state_t>(ext);
+                    for (auto [idx, btn] : enumerate(classic::button_list))
+                        if (xstatus->ext.buttons & btn)
+                            xext.suppress.set(idx);
                     // Clear buttons.
                     xstatus->core.buttons = 0;
                     xstatus->ext.buttons = 0;
-                    // Supress all.
-                    core.suppress.set();
-                    ensure<classic_state_t>(ext).suppress.set();
                 }
                 break;
 
             case WPAD_EXT_PRO_CONTROLLER:
                 {
                     auto xstatus = reinterpret_cast<WPADProStatus*>(status);
+                    // Keep all pro buttons suppressed.
+                    auto& xext = ensure<pro::pad_state_t>(ext);
+                    for (auto [idx, btn] : enumerate(pro::button_list))
+                        if (xstatus->ext.buttons & btn)
+                            xext.suppress.set(idx);
                     // Clear buttons.
                     xstatus->ext.buttons = 0;
-                    // Supress all.
-                    ensure<pro_state_t>(ext).suppress.set();
+                    // Note: we ignore core buttons, they're not supposed to be set.
                 }
                 break;
 
@@ -314,7 +361,7 @@ namespace wpad {
 
         const auto& state = wups::utils::wpad::get_button_state(channel);
 
-        for (auto [core_idx, core_btn] : std::views::enumerate(core_button_list)) {
+        for (auto [core_idx, core_btn] : enumerate(core::button_list)) {
             const auto not_core_btn = ~uint32_t{core_btn};
 
             // If this is a suppressed button, don't process it, keep it clear and
@@ -325,8 +372,6 @@ namespace wpad {
                     pad.core.suppress.reset(core_idx);
 
                 status->buttons &= not_core_btn;
-                // Make sure state and status are coherent
-                // wups::utils::wpad::update(channel, status);
                 continue;
             }
 
@@ -337,12 +382,12 @@ namespace wpad {
 
                 // Hide this event from the game.
                 status->buttons &= not_core_btn;
-                // Make sure state and status are coherent
-                // wups::utils::wpad::update(channel, status);
 
                 pad.core.fake_hold.reset(core_idx);
                 // This button will be suppressed until a release event happens.
                 pad.core.suppress.set(core_idx);
+
+                pad.core.age[core_idx] = 0;
 
             } else {
 
@@ -352,16 +397,17 @@ namespace wpad {
                 bool turbinated = pad.core.turbo.test(core_idx);
                 if (turbinated && (state.core.hold & core_btn)) {
 
-                    pad.core.fake_hold.flip(core_idx);
+                    if (++pad.core.age[core_idx] >= cfg::period) {
 
-                    if (pad.core.fake_hold.test(core_idx))
-                        // simulate a press event
-                        status->buttons |= core_btn;
-                    else
-                        // simulate a release event
-                        status->buttons &= not_core_btn;
-                    // Make sure state and status are coherent
-                    // wups::utils::wpad::update(channel, status);
+                        pad.core.fake_hold.flip(core_idx);
+                        pad.core.age[core_idx] = 0;
+
+                        if (pad.core.fake_hold.test(core_idx))
+                            status->buttons |= core_btn; // simulate a press event
+                        else
+                            status->buttons &= not_core_btn; // simulate a release event
+
+                    }
 
                 } else // if no turbo action, just copy the real button state
                     pad.core.fake_hold.set(core_idx, status->buttons & core_btn);
@@ -376,10 +422,10 @@ namespace wpad {
                     WPADNunchukStatus* status,
                     WPADChan channel)
     {
-        auto& ext = ensure<nunchuk_state_t>(pad.ext);
+        auto& xpad = ensure<nunchuk::pad_state_t>(pad.ext);
 
         // Early out: don't do anything if there's no turbo enabled, and not toggling turbo.
-        if (!pad.toggling && ext.turbo.none())
+        if (!pad.toggling && xpad.turbo.none())
             return;
 
         const auto& state = wups::utils::wpad::get_button_state(channel);
@@ -388,57 +434,56 @@ namespace wpad {
             return;
         const auto& xstate = get<wups::utils::wpad::nunchuk_button_state>(state.ext);
 
-        for (auto [ext_idx, ext_btn] : std::views::enumerate(nunchuk_button_list)) {
+        for (auto [ext_idx, ext_btn] : enumerate(nunchuk::button_list)) {
             const auto not_ext_btn = ~uint32_t{ext_btn};
 
             // If this is a suppressed button, don't process it, keep it clear and
             // skip further turbo processing.
-            if (ext.suppress.test(ext_idx)) {
+            if (xpad.suppress.test(ext_idx)) {
                 // if the button is not held, or was released, we stop supressing it
                 if (!(xstate.hold & ext_btn) || (xstate.release & ext_btn))
-                    ext.suppress.reset(ext_idx);
+                    xpad.suppress.reset(ext_idx);
 
                 status->core.buttons &= not_ext_btn;
-                // Make sure state and status are coherent
-                // wups::utils::wpad::update(channel, &status->core);
                 continue;
             }
 
             if (pad.toggling && (xstate.trigger & ext_btn)) {
 
                 // We're in the toggling state, and a button was triggered.
-                toggle_button(pad, ext.turbo, ext_idx, ext_btn, channel);
+                toggle_button(pad, xpad.turbo, ext_idx, ext_btn, channel);
 
                 // Hide this event from the game.
                 status->core.buttons &= not_ext_btn;
-                // Make sure state and status are coherent
-                // wups::utils::wpad::update(channel, &status->core);
 
-                ext.fake_hold.reset(ext_idx);
+                xpad.fake_hold.reset(ext_idx);
                 // This button will be suppressed until a release event happens.
-                ext.suppress.set(ext_idx);
+                xpad.suppress.set(ext_idx);
+
+                xpad.age[ext_idx] = 0;
 
             } else {
 
                 // We're not in the toggling state, just check if it's a turbinated button
                 // held down.
 
-                bool turbinated = ext.turbo.test(ext_idx);
+                bool turbinated = xpad.turbo.test(ext_idx);
                 if (turbinated && (xstate.hold & ext_btn)) {
 
-                    ext.fake_hold.flip(ext_idx);
+                    if (++xpad.age[ext_idx] >= cfg::period) {
 
-                    if (ext.fake_hold.test(ext_idx))
-                        // simulate a press event
-                        status->core.buttons |= ext_btn;
-                    else
-                        // simulate a release event
-                        status->core.buttons &= not_ext_btn;
-                    // Make sure state and status are coherent
-                    // wups::utils::wpad::update(channel, &status->core);
+                        xpad.fake_hold.flip(ext_idx);
+                        xpad.age[ext_idx] = 0;
+
+                        if (xpad.fake_hold.test(ext_idx))
+                            status->core.buttons |= ext_btn; // simulate a press event
+                        else
+                            status->core.buttons &= not_ext_btn; // simulate a release event
+
+                    }
 
                 } else // if no turbo action, just copy the real button state
-                    ext.fake_hold.set(ext_idx, status->core.buttons & ext_btn);
+                    xpad.fake_hold.set(ext_idx, status->core.buttons & ext_btn);
 
             }
 
@@ -452,10 +497,10 @@ namespace wpad {
                     WPADClassicStatus* status,
                     WPADChan channel)
     {
-        auto& ext = ensure<classic_state_t>(pad.ext);
+        auto& xpad = ensure<classic::pad_state_t>(pad.ext);
 
         // Early out: don't do anything if there's no turbo enabled, and not toggling turbo.
-        if (!pad.toggling && ext.turbo.none())
+        if (!pad.toggling && xpad.turbo.none())
             return;
 
         const auto& state = wups::utils::wpad::get_button_state(channel);
@@ -464,57 +509,56 @@ namespace wpad {
             return;
         const auto& xstate = get<wups::utils::wpad::classic_button_state>(state.ext);
 
-        for (auto [ext_idx, ext_btn] : std::views::enumerate(classic_button_list)) {
+        for (auto [ext_idx, ext_btn] : enumerate(classic::button_list)) {
             const auto not_ext_btn = ~uint32_t{ext_btn};
 
             // If this is a suppressed button, don't process it, keep it clear and
             // skip further turbo processing.
-            if (ext.suppress.test(ext_idx)) {
+            if (xpad.suppress.test(ext_idx)) {
                 // if the button is not held, or was released, we stop supressing it
                 if (!(xstate.hold & ext_btn) || (xstate.release & ext_btn))
-                    ext.suppress.reset(ext_idx);
+                    xpad.suppress.reset(ext_idx);
 
                 status->ext.buttons &= not_ext_btn;
-                // Make sure state and status are coherent
-                // wups::utils::wpad::update(channel, &status->core);
                 continue;
             }
 
             if (pad.toggling && (xstate.trigger & ext_btn)) {
 
                 // We're in the toggling state, and a button was triggered.
-                toggle_button(pad, ext.turbo, ext_idx, ext_btn, channel);
+                toggle_button(pad, xpad.turbo, ext_idx, ext_btn, channel);
 
                 // Hide this event from the game.
                 status->ext.buttons &= not_ext_btn;
-                // Make sure state and status are coherent
-                // wups::utils::wpad::update(channel, &status->core);
 
-                ext.fake_hold.reset(ext_idx);
+                xpad.fake_hold.reset(ext_idx);
                 // This button will be suppressed until a release event happens.
-                ext.suppress.set(ext_idx);
+                xpad.suppress.set(ext_idx);
+
+                xpad.age[ext_idx] = 0;
 
             } else {
 
                 // We're not in the toggling state, just check if it's a turbinated button
                 // held down.
 
-                bool turbinated = ext.turbo.test(ext_idx);
+                bool turbinated = xpad.turbo.test(ext_idx);
                 if (turbinated && (xstate.hold & ext_btn)) {
 
-                    ext.fake_hold.flip(ext_idx);
+                    if (++xpad.age[ext_idx] >= cfg::period) {
 
-                    if (ext.fake_hold.test(ext_idx))
-                        // simulate a press event
-                        status->ext.buttons |= ext_btn;
-                    else
-                        // simulate a release event
-                        status->ext.buttons &= not_ext_btn;
-                    // Make sure state and status are coherent
-                    // wups::utils::wpad::update(channel, &status->core);
+                        xpad.fake_hold.flip(ext_idx);
+                        xpad.age[ext_idx] = 0;
+
+                        if (xpad.fake_hold.test(ext_idx))
+                            status->ext.buttons |= ext_btn; // simulate a press event
+                        else
+                            status->ext.buttons &= not_ext_btn; // simulate a release event
+
+                    }
 
                 } else // if no turbo action, just copy the real button state
-                    ext.fake_hold.set(ext_idx, status->ext.buttons & ext_btn);
+                    xpad.fake_hold.set(ext_idx, status->ext.buttons & ext_btn);
 
             }
 
@@ -528,10 +572,10 @@ namespace wpad {
                     WPADProStatus* status,
                     WPADChan channel)
     {
-        auto& ext = ensure<pro_state_t>(pad.ext);
+        auto& xpad = ensure<pro::pad_state_t>(pad.ext);
 
         // Early out: don't do anything if there's no turbo enabled, and not toggling turbo.
-        if (!pad.toggling && ext.turbo.none())
+        if (!pad.toggling && xpad.turbo.none())
             return;
 
         const auto& state = wups::utils::wpad::get_button_state(channel);
@@ -540,61 +584,60 @@ namespace wpad {
             return;
         const auto& xstate = get<wups::utils::wpad::pro_button_state>(state.ext);
 
-        for (auto [ext_idx, ext_btn] : std::views::enumerate(pro_button_list)) {
+        for (auto [ext_idx, ext_btn] : enumerate(pro::button_list)) {
             const auto not_ext_btn = ~uint32_t{ext_btn};
 
             // If this is a suppressed button, don't process it, keep it clear and
             // skip further turbo processing.
-            if (ext.suppress.test(ext_idx)) {
+            if (xpad.suppress.test(ext_idx)) {
                 // if the button is not held, or was released, we stop supressing it
                 if (!(xstate.hold & ext_btn) || (xstate.release & ext_btn))
-                    ext.suppress.reset(ext_idx);
+                    xpad.suppress.reset(ext_idx);
 
                 status->ext.buttons &= not_ext_btn;
-                // Make sure state and status are coherent
-                // wups::utils::wpad::update(channel, &status->core);
                 continue;
             }
 
             if (pad.toggling && (xstate.trigger & ext_btn)) {
 
                 // We're in the toggling state, and a button was triggered.
-                toggle_button(pad, ext.turbo, ext_idx, ext_btn, channel);
+                toggle_button(pad, xpad.turbo, ext_idx, ext_btn, channel);
 
                 // Hide this event from the game.
                 status->ext.buttons &= not_ext_btn;
-                // Make sure state and status are coherent
-                // wups::utils::wpad::update(channel, &status->core);
 
-                ext.fake_hold.reset(ext_idx);
+                xpad.fake_hold.reset(ext_idx);
                 // This button will be suppressed until a release event happens.
-                ext.suppress.set(ext_idx);
+                xpad.suppress.set(ext_idx);
+
+                xpad.age[ext_idx] = 0;
 
             } else {
 
                 // We're not in the toggling state, just check if it's a turbinated button
                 // held down.
 
-                bool turbinated = ext.turbo.test(ext_idx);
+                bool turbinated = xpad.turbo.test(ext_idx);
                 if (turbinated && (xstate.hold & ext_btn)) {
 
-                    ext.fake_hold.flip(ext_idx);
+                    if (++xpad.age[ext_idx] >= cfg::period) {
 
-                    if (ext.fake_hold.test(ext_idx))
-                        // simulate a press event
-                        status->ext.buttons |= ext_btn;
-                    else
-                        // simulate a release event
-                        status->ext.buttons &= not_ext_btn;
-                    // Make sure state and status are coherent
-                    // wups::utils::wpad::update(channel, &status->core);
+                        xpad.fake_hold.flip(ext_idx);
+                        xpad.age[ext_idx] = 0;
+
+                        if (xpad.fake_hold.test(ext_idx))
+                            status->ext.buttons |= ext_btn; // simulate a press event
+                        else
+                            status->ext.buttons &= not_ext_btn; // simulate a release event
+
+                    }
 
                 } else // if no turbo action, just copy the real button state
-                    ext.fake_hold.set(ext_idx, status->ext.buttons & ext_btn);
+                    xpad.fake_hold.set(ext_idx, status->ext.buttons & ext_btn);
 
             }
 
-        } // for
+        } // for each possible button
 
     }
 

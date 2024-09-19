@@ -26,8 +26,10 @@
 
 
 using std::array;
-using std::uint32_t;
 using std::int32_t;
+using std::uint32_t;
+using std::uint8_t;
+using std::views::enumerate;
 
 using wups::utils::button_combo;
 
@@ -64,6 +66,7 @@ namespace vpad {
         button_set turbo;
         button_set fake_hold;
         button_set suppress;
+        array<uint8_t, max_buttons> age{};
         bool       toggling = false;
     };
 
@@ -119,7 +122,7 @@ namespace vpad {
         if (!pad.toggling && pad.turbo.none())
             return;
 
-        for (auto [idx, btn] : std::views::enumerate(button_list)) {
+        for (auto [idx, btn] : enumerate(button_list)) {
 
             const auto not_btn = ~uint32_t{btn};
 
@@ -149,6 +152,8 @@ namespace vpad {
                 // This button will be suppressed until a release event happens.
                 pad.suppress.set(idx);
 
+                pad.age[idx] = 0;
+
             } else {
 
                 // We're not in the toggling state, just check if it's a turbinated button
@@ -157,17 +162,22 @@ namespace vpad {
                 bool turbinated = pad.turbo.test(idx);
                 if (turbinated && (status.hold & btn)) {
 
-                    pad.fake_hold.flip(idx);
+                    if (++pad.age[idx] >= cfg::period) {
 
-                    if (pad.fake_hold.test(idx)) {
-                        // simulate a press event
-                        status.trigger |= btn;
-                        status.release &= not_btn;
-                    } else {
-                        // simulate a release event
-                        status.hold    &= not_btn;
-                        status.trigger &= not_btn;
-                        status.release |= btn;
+                        pad.fake_hold.flip(idx);
+                        pad.age[idx] = 0;
+
+                        if (pad.fake_hold.test(idx)) {
+                            // simulate a press event
+                            status.trigger |= btn;
+                            status.release &= not_btn;
+                        } else {
+                            // simulate a release event
+                            status.hold    &= not_btn;
+                            status.trigger &= not_btn;
+                            status.release |= btn;
+                        }
+
                     }
 
                 } else // if no turbo action, just copy the real button state
@@ -195,15 +205,18 @@ namespace vpad {
 
         auto& pad = state[channel];
 
-        int32_t real_count = VPADGetButtonProcMode(channel) ? result : 1;
+        bool is_loose = !VPADGetButtonProcMode(channel);
+        int32_t real_count = is_loose ? 1 : result;
         for (int32_t idx = real_count - 1; idx >= 0; --idx) {
             VPADStatus& status = buf[idx];
             if (wups::utils::vpad::update(channel, status)) {
 
                 bool combo_activated = false;
                 for (const auto& combo : cfg::toggle_combo)
-                    if (wups::utils::vpad::triggered(channel, combo))
+                    if (wups::utils::vpad::triggered(channel, combo)) {
                         combo_activated = true;
+                        break;
+                    }
 
                 // Note: when a combo is activated, don't do any turbo processing.
                 if (combo_activated) [[unlikely]] {
@@ -211,19 +224,30 @@ namespace vpad {
                     // Enter or leave toggling state.
                     pad.toggling = !pad.toggling;
 
+                    // Keep all held buttons suppressed.
+                    for (auto [btn_idx, btn] : enumerate(button_list))
+                        if (status.hold & btn)
+                            pad.suppress.set(btn_idx);
+
                     // Discard all buttons.
                     status.hold = 0;
                     status.trigger = 0;
                     status.release = status.hold;
-
-                    // Keep all buttons suppressed.
-                    pad.suppress.set();
 
                 } else [[likely]]
                     run_turbo_logic(pad, status, channel);
 
             }
 
+        }
+
+        if (is_loose) {
+            // Every sample in buf should have the same button state.
+            for (int32_t idx = 1; idx < result; ++idx) {
+                buf[idx].hold = buf[0].hold;
+                buf[idx].trigger = buf[0].trigger;
+                buf[idx].release = buf[0].release;
+            }
         }
 
         return result;

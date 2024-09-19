@@ -16,9 +16,10 @@
 
 namespace cfg {
 
-    inline constexpr unsigned max_toggle_combos = 3;
+    inline constexpr unsigned max_toggle_combos = 4;
 
     extern bool enabled;
+    extern int period;
     extern std::array<wups::utils::button_combo,
                       max_toggle_combos> toggle_combo;
 

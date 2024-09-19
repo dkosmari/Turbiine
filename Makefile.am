@@ -26,10 +26,11 @@ WPS_FILE = turbiine.wps
 
 noinst_PROGRAMS = turbiine.elf
 
-turbiine_elf_SOURCES = \
-	src/cfg.cpp src/cfg.hpp \
-	src/main.cpp \
-	src/vpad.cpp src/vpad.hpp \
+turbiine_elf_SOURCES =						\
+	src/cfg.cpp src/cfg.hpp					\
+	src/main.cpp						\
+	src/reset_turbo_item.cpp src/reset_turbo_item.hpp	\
+	src/vpad.cpp src/vpad.hpp				\
 	src/wpad.cpp src/wpad.hpp
 
 turbiine_elf_LDADD = $(top_builddir)/external/libwupsxx/src/libwupsxx.a
