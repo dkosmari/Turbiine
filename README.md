@@ -36,13 +36,13 @@ To configure the plugin, open the Plugin Config Menu (**L + ↓ + SELECT**) and 
 
 - **Toggle 1, 2, 3, 4**: Sets the combo for turning turbo on or off.
 
-   1. Press `A` to focus the combo you want to change.
-   2. Hold the buttons you want for the combo, until they are recorded.
-   3. Release all the buttons. Press `A` to confirm the new combo, `B` to cancel, `X`/`1`
-      to reset to the default combo.
+  1. Press `A` to focus the combo you want to change.
+  2. Hold the buttons you want for the combo, until they are recorded.
+  3. Release all the buttons. Press `A` to confirm the new combo, `B` to cancel, `X`/`1`
+     to reset to the default combo.
 
-    If you leave the combo empty, because you didn't hold any button long enough in step
-    **2**, the combo will be considered disabled.
+  If you leave the combo empty, because you didn't hold any button long enough in step
+  **2**, the combo will be considered disabled.
 
 
 ## Build instructions
