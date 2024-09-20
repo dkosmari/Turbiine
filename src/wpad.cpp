@@ -17,7 +17,6 @@
 // #include <coreinit/thread.h> // DEBUG
 #include <padscore/wpad.h>
 
-#include <notifications/notifications.h>
 #include <wups/function_patching.h>
 
 #include <wupsxx/button_combo.hpp>
@@ -26,6 +25,9 @@
 #include "wpad.hpp"
 
 #include "cfg.hpp"
+#include "notify.hpp"
+
+// Borrow this header from libwupsxx, since WUT doesn't have these definitions.
 #include <wupsxx/../../src/wpad_status.h>
 
 
@@ -330,87 +332,78 @@ namespace wpad {
 
         wups::utils::wpad::button_set bs = make_button_set(btn);
 
-        char buf[32];
         const char* on_off = turbo.test(idx) ? "turbo" : "normal";
-        std::snprintf(buf, sizeof buf,
-                      "%s = %s",
-                      to_glyph(bs).c_str(),
-                      on_off);
-        NotificationModule_AddInfoNotificationEx(buf,
-                                                 3,
-                                                 {0xff, 0xff, 0xff, 0xff},
-                                                 {0x20, 0x20, 0x40, 0xff},
-                                                 nullptr,
-                                                 nullptr,
-                                                 true);
-        logger::printf("wpad %u button %s = %s\n",
+        notify::info("%s = %s",
+                     to_glyph(bs).c_str(),
+                     on_off);
+
+        logger::printf("wpad %u button %s [%u] = %s\n",
                        unsigned{channel},
                        to_string(bs).c_str(),
+                       idx,
                        on_off);
     }
 
 
     void
-    run_core_turbo_logic(pad_state_t& pad,
+    run_turbo_logic_core(pad_state_t& pad,
                          WPADStatus* status,
                          WPADChan channel)
     {
-        // Early out: don't do anything if there's no turbo enabled, and not toggling turbo.
-        if (!pad.toggling && pad.core.turbo.none())
-            return;
-
         const auto& state = wups::utils::wpad::get_button_state(channel);
 
-        for (auto [core_idx, core_btn] : enumerate(core::button_list)) {
-            const auto not_core_btn = ~uint32_t{core_btn};
+        for (auto [idx, btn] : enumerate(core::button_list)) {
+            const auto not_btn = ~uint32_t{btn};
 
             // If this is a suppressed button, don't process it, keep it clear and
             // skip further turbo processing.
-            if (pad.core.suppress.test(core_idx)) {
+            if (pad.core.suppress.test(idx)) {
                 // if the button is not held, or was released, we stop supressing it
-                if (!(state.core.hold & core_btn) || (state.core.release & core_btn))
-                    pad.core.suppress.reset(core_idx);
+                if (!(state.core.hold & btn) || (state.core.release & btn))
+                    pad.core.suppress.reset(idx);
 
-                status->buttons &= not_core_btn;
+                status->buttons &= not_btn;
+
                 continue;
             }
 
-            if (pad.toggling && (state.core.trigger & core_btn)) {
+            if (pad.toggling && (state.core.trigger & btn)) {
 
                 // We're in the toggling state, and a button was triggered.
-                toggle_button(pad, pad.core.turbo, core_idx, core_btn, channel);
+                toggle_button(pad, pad.core.turbo, idx, btn, channel);
 
                 // Hide this event from the game.
-                status->buttons &= not_core_btn;
+                status->buttons &= not_btn;
 
-                pad.core.fake_hold.reset(core_idx);
+                pad.core.fake_hold.reset(idx);
+
                 // This button will be suppressed until a release event happens.
-                pad.core.suppress.set(core_idx);
+                pad.core.suppress.set(idx);
 
-                pad.core.age[core_idx] = 0;
+                pad.core.age[idx] = 0;
 
             } else {
 
                 // We're not in the toggling state, just check if it's a turbinated button
                 // held down.
 
-                bool turbinated = pad.core.turbo.test(core_idx);
-                if (turbinated && (state.core.hold & core_btn)) {
+                bool turbinated = pad.core.turbo.test(idx);
+                if (turbinated && (state.core.hold & btn)) {
 
-                    if (++pad.core.age[core_idx] >= cfg::period) {
+                    if (++pad.core.age[idx] >= cfg::period) {
 
-                        pad.core.fake_hold.flip(core_idx);
-                        pad.core.age[core_idx] = 0;
+                        pad.core.fake_hold.flip(idx);
+                        pad.core.age[idx] = 0;
 
-                        if (pad.core.fake_hold.test(core_idx))
-                            status->buttons |= core_btn; // simulate a press event
+                        if (pad.core.fake_hold.test(idx))
+                            status->buttons |= btn; // simulate a press event
                         else
-                            status->buttons &= not_core_btn; // simulate a release event
+                            status->buttons &= not_btn; // simulate a release event
 
                     }
 
                 } else // if no turbo action, just copy the real button state
-                    pad.core.fake_hold.set(core_idx, status->buttons & core_btn);
+                    pad.core.fake_hold.set(idx, status->buttons & btn);
 
             }
         }
@@ -418,72 +411,66 @@ namespace wpad {
 
 
     void
-    run_turbo_logic(pad_state_t& pad,
-                    WPADNunchukStatus* status,
-                    WPADChan channel)
+    run_turbo_logic_ext(pad_state_t& pad,
+                        WPADNunchukStatus* status,
+                        WPADChan channel)
     {
         auto& xpad = ensure<nunchuk::pad_state_t>(pad.ext);
-
-        // Early out: don't do anything if there's no turbo enabled, and not toggling turbo.
-        if (!pad.toggling && xpad.turbo.none())
-            return;
-
         const auto& state = wups::utils::wpad::get_button_state(channel);
-        if (!holds_alternative<wups::utils::wpad::nunchuk_button_state>(state.ext))
-            [[unlikely]]
-            return;
         const auto& xstate = get<wups::utils::wpad::nunchuk_button_state>(state.ext);
 
-        for (auto [ext_idx, ext_btn] : enumerate(nunchuk::button_list)) {
-            const auto not_ext_btn = ~uint32_t{ext_btn};
+        for (auto [idx, btn] : enumerate(nunchuk::button_list)) {
+            const auto not_btn = ~uint32_t{btn};
 
             // If this is a suppressed button, don't process it, keep it clear and
             // skip further turbo processing.
-            if (xpad.suppress.test(ext_idx)) {
+            if (xpad.suppress.test(idx)) {
                 // if the button is not held, or was released, we stop supressing it
-                if (!(xstate.hold & ext_btn) || (xstate.release & ext_btn))
-                    xpad.suppress.reset(ext_idx);
+                if (!(xstate.hold & btn) || (xstate.release & btn))
+                    xpad.suppress.reset(idx);
 
-                status->core.buttons &= not_ext_btn;
+                status->core.buttons &= not_btn;
+
                 continue;
             }
 
-            if (pad.toggling && (xstate.trigger & ext_btn)) {
+            if (pad.toggling && (xstate.trigger & btn)) {
 
                 // We're in the toggling state, and a button was triggered.
-                toggle_button(pad, xpad.turbo, ext_idx, ext_btn, channel);
+                toggle_button(pad, xpad.turbo, idx, btn, channel);
 
                 // Hide this event from the game.
-                status->core.buttons &= not_ext_btn;
+                status->core.buttons &= not_btn;
 
-                xpad.fake_hold.reset(ext_idx);
+                xpad.fake_hold.reset(idx);
+
                 // This button will be suppressed until a release event happens.
-                xpad.suppress.set(ext_idx);
+                xpad.suppress.set(idx);
 
-                xpad.age[ext_idx] = 0;
+                xpad.age[idx] = 0;
 
             } else {
 
                 // We're not in the toggling state, just check if it's a turbinated button
                 // held down.
 
-                bool turbinated = xpad.turbo.test(ext_idx);
-                if (turbinated && (xstate.hold & ext_btn)) {
+                bool turbinated = xpad.turbo.test(idx);
+                if (turbinated && (xstate.hold & btn)) {
 
-                    if (++xpad.age[ext_idx] >= cfg::period) {
+                    if (++xpad.age[idx] >= cfg::period) {
 
-                        xpad.fake_hold.flip(ext_idx);
-                        xpad.age[ext_idx] = 0;
+                        xpad.fake_hold.flip(idx);
+                        xpad.age[idx] = 0;
 
-                        if (xpad.fake_hold.test(ext_idx))
-                            status->core.buttons |= ext_btn; // simulate a press event
+                        if (xpad.fake_hold.test(idx))
+                            status->core.buttons |= btn; // simulate a press event
                         else
-                            status->core.buttons &= not_ext_btn; // simulate a release event
+                            status->core.buttons &= not_btn; // simulate a release event
 
                     }
 
                 } else // if no turbo action, just copy the real button state
-                    xpad.fake_hold.set(ext_idx, status->core.buttons & ext_btn);
+                    xpad.fake_hold.set(idx, status->core.buttons & btn);
 
             }
 
@@ -493,72 +480,65 @@ namespace wpad {
 
 
     void
-    run_turbo_logic(pad_state_t& pad,
-                    WPADClassicStatus* status,
-                    WPADChan channel)
+    run_turbo_logic_ext(pad_state_t& pad,
+                        WPADClassicStatus* status,
+                        WPADChan channel)
     {
         auto& xpad = ensure<classic::pad_state_t>(pad.ext);
-
-        // Early out: don't do anything if there's no turbo enabled, and not toggling turbo.
-        if (!pad.toggling && xpad.turbo.none())
-            return;
-
         const auto& state = wups::utils::wpad::get_button_state(channel);
-        if (!holds_alternative<wups::utils::wpad::classic_button_state>(state.ext))
-            [[unlikely]]
-            return;
         const auto& xstate = get<wups::utils::wpad::classic_button_state>(state.ext);
 
-        for (auto [ext_idx, ext_btn] : enumerate(classic::button_list)) {
-            const auto not_ext_btn = ~uint32_t{ext_btn};
+        for (auto [idx, btn] : enumerate(classic::button_list)) {
+            const auto not_btn = ~uint32_t{btn};
 
             // If this is a suppressed button, don't process it, keep it clear and
             // skip further turbo processing.
-            if (xpad.suppress.test(ext_idx)) {
+            if (xpad.suppress.test(idx)) {
                 // if the button is not held, or was released, we stop supressing it
-                if (!(xstate.hold & ext_btn) || (xstate.release & ext_btn))
-                    xpad.suppress.reset(ext_idx);
+                if (!(xstate.hold & btn) || (xstate.release & btn))
+                    xpad.suppress.reset(idx);
 
-                status->ext.buttons &= not_ext_btn;
+                status->ext.buttons &= not_btn;
                 continue;
             }
 
-            if (pad.toggling && (xstate.trigger & ext_btn)) {
+            if (pad.toggling && (xstate.trigger & btn)) {
 
                 // We're in the toggling state, and a button was triggered.
-                toggle_button(pad, xpad.turbo, ext_idx, ext_btn, channel);
+                toggle_button(pad, xpad.turbo, idx, btn, channel);
 
                 // Hide this event from the game.
-                status->ext.buttons &= not_ext_btn;
+                status->ext.buttons &= not_btn;
 
-                xpad.fake_hold.reset(ext_idx);
+                xpad.fake_hold.reset(idx);
+
                 // This button will be suppressed until a release event happens.
-                xpad.suppress.set(ext_idx);
+                xpad.suppress.set(idx);
 
-                xpad.age[ext_idx] = 0;
+                xpad.age[idx] = 0;
 
             } else {
 
                 // We're not in the toggling state, just check if it's a turbinated button
                 // held down.
 
-                bool turbinated = xpad.turbo.test(ext_idx);
-                if (turbinated && (xstate.hold & ext_btn)) {
+                bool turbinated = xpad.turbo.test(idx);
+                if (turbinated && (xstate.hold & btn)) {
 
-                    if (++xpad.age[ext_idx] >= cfg::period) {
+                    if (++xpad.age[idx] >= cfg::period) {
 
-                        xpad.fake_hold.flip(ext_idx);
-                        xpad.age[ext_idx] = 0;
+                        xpad.fake_hold.flip(idx);
+                        xpad.age[idx] = 0;
 
-                        if (xpad.fake_hold.test(ext_idx))
-                            status->ext.buttons |= ext_btn; // simulate a press event
+                        if (xpad.fake_hold.test(idx))
+                            status->ext.buttons |= btn; // simulate a press event
                         else
-                            status->ext.buttons &= not_ext_btn; // simulate a release event
+                            status->ext.buttons &= not_btn; // simulate a release event
 
                     }
 
                 } else // if no turbo action, just copy the real button state
-                    xpad.fake_hold.set(ext_idx, status->ext.buttons & ext_btn);
+                    xpad.fake_hold.set(idx, status->ext.buttons & btn);
 
             }
 
@@ -568,72 +548,65 @@ namespace wpad {
 
 
     void
-    run_turbo_logic(pad_state_t& pad,
-                    WPADProStatus* status,
-                    WPADChan channel)
+    run_turbo_logic_ext(pad_state_t& pad,
+                        WPADProStatus* status,
+                        WPADChan channel)
     {
         auto& xpad = ensure<pro::pad_state_t>(pad.ext);
-
-        // Early out: don't do anything if there's no turbo enabled, and not toggling turbo.
-        if (!pad.toggling && xpad.turbo.none())
-            return;
-
         const auto& state = wups::utils::wpad::get_button_state(channel);
-        if (!holds_alternative<wups::utils::wpad::pro_button_state>(state.ext))
-            [[unlikely]]
-            return;
         const auto& xstate = get<wups::utils::wpad::pro_button_state>(state.ext);
 
-        for (auto [ext_idx, ext_btn] : enumerate(pro::button_list)) {
-            const auto not_ext_btn = ~uint32_t{ext_btn};
+        for (auto [idx, btn] : enumerate(pro::button_list)) {
+            const auto not_btn = ~uint32_t{btn};
 
             // If this is a suppressed button, don't process it, keep it clear and
             // skip further turbo processing.
-            if (xpad.suppress.test(ext_idx)) {
+            if (xpad.suppress.test(idx)) {
                 // if the button is not held, or was released, we stop supressing it
-                if (!(xstate.hold & ext_btn) || (xstate.release & ext_btn))
-                    xpad.suppress.reset(ext_idx);
+                if (!(xstate.hold & btn) || (xstate.release & btn))
+                    xpad.suppress.reset(idx);
 
-                status->ext.buttons &= not_ext_btn;
+                status->ext.buttons &= not_btn;
                 continue;
             }
 
-            if (pad.toggling && (xstate.trigger & ext_btn)) {
+            if (pad.toggling && (xstate.trigger & btn)) {
 
                 // We're in the toggling state, and a button was triggered.
-                toggle_button(pad, xpad.turbo, ext_idx, ext_btn, channel);
+                toggle_button(pad, xpad.turbo, idx, btn, channel);
 
                 // Hide this event from the game.
-                status->ext.buttons &= not_ext_btn;
+                status->ext.buttons &= not_btn;
 
-                xpad.fake_hold.reset(ext_idx);
+                xpad.fake_hold.reset(idx);
+
                 // This button will be suppressed until a release event happens.
-                xpad.suppress.set(ext_idx);
+                xpad.suppress.set(idx);
 
-                xpad.age[ext_idx] = 0;
+                xpad.age[idx] = 0;
 
             } else {
 
                 // We're not in the toggling state, just check if it's a turbinated button
                 // held down.
 
-                bool turbinated = xpad.turbo.test(ext_idx);
-                if (turbinated && (xstate.hold & ext_btn)) {
+                bool turbinated = xpad.turbo.test(idx);
+                if (turbinated && (xstate.hold & btn)) {
 
-                    if (++xpad.age[ext_idx] >= cfg::period) {
+                    if (++xpad.age[idx] >= cfg::period) {
 
-                        xpad.fake_hold.flip(ext_idx);
-                        xpad.age[ext_idx] = 0;
+                        xpad.fake_hold.flip(idx);
+                        xpad.age[idx] = 0;
 
-                        if (xpad.fake_hold.test(ext_idx))
-                            status->ext.buttons |= ext_btn; // simulate a press event
+                        if (xpad.fake_hold.test(idx))
+                            status->ext.buttons |= btn; // simulate a press event
                         else
-                            status->ext.buttons &= not_ext_btn; // simulate a release event
+                            status->ext.buttons &= not_btn; // simulate a release event
 
                     }
 
                 } else // if no turbo action, just copy the real button state
-                    xpad.fake_hold.set(ext_idx, status->ext.buttons & ext_btn);
+                    xpad.fake_hold.set(idx, status->ext.buttons & btn);
 
             }
 
@@ -651,26 +624,26 @@ namespace wpad {
         case WPAD_EXT_CORE:
         case WPAD_EXT_MPLUS:
             pad.ext = {};
-            run_core_turbo_logic(pad, status, channel);
+            run_turbo_logic_core(pad, status, channel);
             break;
         case WPAD_EXT_NUNCHUK:
         case WPAD_EXT_MPLUS_NUNCHUK:
-            run_core_turbo_logic(pad, status, channel);
-            run_turbo_logic(pad,
-                            reinterpret_cast<WPADNunchukStatus*>(status),
-                            channel);
+            run_turbo_logic_core(pad, status, channel);
+            run_turbo_logic_ext(pad,
+                                reinterpret_cast<WPADNunchukStatus*>(status),
+                                channel);
             break;
         case WPAD_EXT_CLASSIC:
         case WPAD_EXT_MPLUS_CLASSIC:
-            run_core_turbo_logic(pad, status, channel);
-            run_turbo_logic(pad,
-                            reinterpret_cast<WPADClassicStatus*>(status),
-                            channel);
+            run_turbo_logic_core(pad, status, channel);
+            run_turbo_logic_ext(pad,
+                                reinterpret_cast<WPADClassicStatus*>(status),
+                                channel);
             break;
         case WPAD_EXT_PRO_CONTROLLER:
-            run_turbo_logic(pad,
-                            reinterpret_cast<WPADProStatus*>(status),
-                            channel);
+            run_turbo_logic_ext(pad,
+                                reinterpret_cast<WPADProStatus*>(status),
+                                channel);
             break;
         }
     }
@@ -696,22 +669,31 @@ namespace wpad {
 
         bool combo_activated = false;
         for (const auto& combo : cfg::toggle_combo)
-            if (wups::utils::wpad::triggered(channel, combo))
+            if (wups::utils::wpad::triggered(channel, combo)) {
                 combo_activated = true;
+                break;
+            }
 
         // Note: when a combo is activated, don't do any turbo processing.
         if (combo_activated) [[unlikely]] {
-            // logger::printf("wpad combo activated on %u (thread = %p)\n",
-            //                (unsigned)channel,
-            //                OSGetCurrentThread());
+
             // Enter or leave toggling state.
             pad.toggling = !pad.toggling;
 
+            notify::info(pad.toggling
+                         ? "Toggling turbo..."
+                         : "Canceled turbo toggle.");
+
             // Discard buttons being held down, mark them as suppressed.
             pad.clear_and_suppress_buttons(status);
-        }
-        else [[likely]]
-            run_turbo_logic(pad, status, channel);
+
+        } else [[likely]]
+            try {
+                run_turbo_logic(pad, status, channel);
+            }
+            catch (std::exception& e) {
+                logger::printf("Error running WPAD turbo logic: %s\n", e.what());
+            }
     }
 
 

@@ -14,7 +14,6 @@
 
 #include <vpad/input.h>
 
-#include <notifications/notifications.h>
 #include <wups/function_patching.h>
 
 #include <wupsxx/button_combo.hpp>
@@ -23,6 +22,7 @@
 #include "vpad.hpp"
 
 #include "cfg.hpp"
+#include "notify.hpp"
 
 
 using std::array;
@@ -77,6 +77,7 @@ namespace vpad {
     void
     reset()
     {
+        logger::printf("Resetting vpads\n");
         state.fill({});
     }
 
@@ -93,22 +94,15 @@ namespace vpad {
 
         wups::utils::vpad::button_set bs{btn};
 
-        char buf[32];
         const char* on_off = pad.turbo.test(idx) ? "turbo" : "normal";
-        std::snprintf(buf, sizeof buf,
-                      "%s = %s",
-                      to_glyph(bs).c_str(),
-                      on_off);
-        NotificationModule_AddInfoNotificationEx(buf,
-                                                 3,
-                                                 {0xff, 0xff, 0xff, 0xff},
-                                                 {0x20, 0x20, 0x40, 0xff},
-                                                 nullptr,
-                                                 nullptr,
-                                                 true);
-        logger::printf("vpad %u button %s = %s\n",
+        notify::info("%s = %s",
+                     to_glyph(bs).c_str(),
+                     on_off);
+
+        logger::printf("vpad %u button %s [%u] = %s\n",
                        unsigned{channel},
                        to_string(bs).c_str(),
+                       idx,
                        on_off);
     }
 
@@ -118,10 +112,6 @@ namespace vpad {
                     VPADStatus& status,
                     VPADChan channel)
     {
-        // Early out: don't do anything if there's no turbo enabled, and not toggling turbo.
-        if (!pad.toggling && pad.turbo.none())
-            return;
-
         for (auto [idx, btn] : enumerate(button_list)) {
 
             const auto not_btn = ~uint32_t{btn};
@@ -129,12 +119,14 @@ namespace vpad {
             // If this is a suppressed button, don't process it, keep it clear and
             // skip further turbo processing.
             if (pad.suppress.test(idx)) {
-                // if the button is not held, or was released, we stop supressing it
+                // if the button is not held, or was released, we stop suppressing it
                 if (!(status.hold & btn) || (status.release & btn))
                     pad.suppress.reset(idx);
 
                 status.hold    &= not_btn;
                 status.trigger &= not_btn;
+                status.release &= not_btn;
+
                 continue;
             }
 
@@ -149,6 +141,7 @@ namespace vpad {
                 status.release &= not_btn;
 
                 pad.fake_hold.reset(idx);
+
                 // This button will be suppressed until a release event happens.
                 pad.suppress.set(idx);
 
@@ -224,18 +217,31 @@ namespace vpad {
                     // Enter or leave toggling state.
                     pad.toggling = !pad.toggling;
 
+                    notify::info(pad.toggling
+                                 ? "Toggling turbo..."
+                                 : "Canceled turbo toggle.");
+
                     // Keep all held buttons suppressed.
                     for (auto [btn_idx, btn] : enumerate(button_list))
                         if (status.hold & btn)
                             pad.suppress.set(btn_idx);
 
                     // Discard all buttons.
+
+                    // Note: buttons that were triggered right now are not released, since
+                    // their trigger event will never be recorded. We only release the
+                    // buttons that were being held before the trigger.
+                    status.release = status.hold ^ status.trigger;
                     status.hold = 0;
                     status.trigger = 0;
-                    status.release = status.hold;
 
                 } else [[likely]]
-                    run_turbo_logic(pad, status, channel);
+                    try {
+                        run_turbo_logic(pad, status, channel);
+                    }
+                    catch (std::exception& e) {
+                        logger::printf("Error running VPAD turbo logic: %s\n", e.what());
+                    }
 
             }
 
