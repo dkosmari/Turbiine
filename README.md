@@ -6,6 +6,8 @@
 
 > It’s time to level up your game!
 
+This is an Aroma plugin to turn any Wii U controller into a turbo controller.
+
 
 ## Usage
 
@@ -32,5 +34,34 @@ Go to the plugin configuration menu to view/change the shortcuts. You can config
 
 - **Reset all turbos...**: Disables all turbo action on all controllers.
 
-- **Toggle 1, 2, 3, 4**: Sets the combo for turning turbo on or off. By default, only
-  **Toggle 1** is set, to `TV + ZL`.
+- **Toggle 1, 2, 3, 4**: Sets the combo for turning turbo on or off.
+
+    1. Press `A` to focus the combo you want to change.
+    2. Hold the buttons you want for the combo, until they are recorded.
+    3. Release all the buttons. Press `A` to confirm the new combo, `B` to cancel, `X`/`1`
+       to reset to the default combo.
+
+    If you leave the combo empty, because you didn't hold any button long enough in step
+    **2**, the combo will be considered disabled.
+
+
+## Build instructions
+
+This is a standard Automake package; a Docker build script is also provided.
+
+
+### Building with Automake
+
+If you got a release tarball (`.tar.gz`) you can skip step 0.
+
+0. `./bootstrap`
+
+1. `./configure --host=powerpc-eabi CXXFLAGS='-Os'`
+
+2. `make`
+
+
+### Building with Docker
+
+Run the `./docker-build.sh` script.
+
