@@ -44,7 +44,15 @@ namespace cfg {
         const int period = 1;
 
         const array<button_combo, max_toggle_combos> toggle_combo = {
-            vpad::button_set{VPAD_BUTTON_TV, VPAD_BUTTON_ZL},
+            vpad::button_set{VPAD_BUTTON_TV,
+                             VPAD_BUTTON_ZL},
+            wpad::button_set{wpad::core::button_set{WPAD_BUTTON_MINUS,
+                                                    WPAD_BUTTON_PLUS,
+                                                    WPAD_BUTTON_B}},
+            wpad::button_set{wpad::classic::button_set{WPAD_CLASSIC_BUTTON_DOWN,
+                                                       WPAD_CLASSIC_BUTTON_ZL}},
+            wpad::button_set{wpad::pro::button_set{WPAD_PRO_BUTTON_DOWN,
+                                                   WPAD_PRO_TRIGGER_ZL}}
         };
 
     } // namespace defaults
