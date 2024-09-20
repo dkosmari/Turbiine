@@ -1,4 +1,5 @@
 EXTRA_DIST = \
+	assets \
 	bootstrap \
 	COPYING \
 	docker-build.sh \
