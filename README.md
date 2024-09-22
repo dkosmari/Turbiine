@@ -41,8 +41,13 @@ To configure the plugin, open the Plugin Config Menu (**L + ↓ + SELECT**) and 
 
   3. Release all the buttons.
 
-  4. Press `A` to confirm the new button combo, `B` to cancel, `X`/`1` to reset to the
-     default button combo.
+  4. Press either:
+
+       - `A` to confirm the new button combo;
+
+       - `B` to cancel;
+
+       - `X`/`1` to reset to the default button combo.
 
   If you leave the button combo empty, because you didn't hold any button long enough in
   step *2*, the combo will be considered disabled.
