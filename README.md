@@ -62,7 +62,7 @@ This is a standard Automake package; a Docker build script is also provided.
 
 #### Dependencies
 
-- [WiiUPluginSystem(https://github.com/wiiu-env/WiiUPluginSystem)
+- [WiiUPluginSystem](https://github.com/wiiu-env/WiiUPluginSystem)
 - [libnotifications](https://github.com/wiiu-env/libnotifications)
 
 If you got a release tarball (`.tar.gz`) you can skip step 0.
