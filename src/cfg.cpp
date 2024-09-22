@@ -50,8 +50,10 @@ namespace cfg {
                                                     WPAD_BUTTON_PLUS,
                                                     WPAD_BUTTON_B}},
             wpad::button_set{wpad::classic::button_set{WPAD_CLASSIC_BUTTON_DOWN,
+                                                       WPAD_CLASSIC_BUTTON_MINUS,
                                                        WPAD_CLASSIC_BUTTON_ZL}},
             wpad::button_set{wpad::pro::button_set{WPAD_PRO_BUTTON_DOWN,
+                                                   WPAD_PRO_BUTTON_MINUS,
                                                    WPAD_PRO_TRIGGER_ZL}}
         };
 
@@ -68,27 +70,31 @@ namespace cfg {
     void
     load()
     {
-        wups::storage::load_or_init("enabled", enabled, defaults::enabled);
+        using wups::storage::load_or_init;
 
-        wups::storage::load_or_init("period", period, defaults::period);
+        load_or_init("enabled", enabled, defaults::enabled);
+
+        load_or_init("period", period, defaults::period);
 
         for (unsigned i = 0; i < max_toggle_combos; ++i)
-            wups::storage::load_or_init("toggle" + std::to_string(i + 1),
-                                        toggle_combo[i],
-                                        defaults::toggle_combo[i]);
+            load_or_init("toggle" + std::to_string(i + 1),
+                         toggle_combo[i],
+                         defaults::toggle_combo[i]);
     }
 
 
     void
     save()
     {
-        wups::storage::store("enabled", enabled);
+        using wups::storage::store;
 
-        wups::storage::store("period", period);
+        store("enabled", enabled);
+
+        store("period", period);
 
         for (unsigned i = 0; i < max_toggle_combos; ++i)
-            wups::storage::store("toggle" + std::to_string(i + 1),
-                                 toggle_combo[i]);
+            store("toggle" + std::to_string(i + 1),
+                  toggle_combo[i]);
 
         wups::storage::save();
     }
@@ -109,13 +115,12 @@ namespace cfg {
                                   defaults::period,
                                   1, 100));
 
-        root.add(reset_turbo_item::create());
-
         for  (unsigned i = 0; i < max_toggle_combos; ++i)
-            root.add(button_combo_item::create("Toggle " + std::to_string(i + 1),
+            root.add(button_combo_item::create("Toggle turbo " + std::to_string(i + 1),
                                                toggle_combo[i],
                                                defaults::toggle_combo[i]));
 
+        root.add(reset_turbo_item::create());
     }
 
 
@@ -140,6 +145,5 @@ namespace cfg {
 
         cfg::load();
     }
-
 
 } // namespace cfg

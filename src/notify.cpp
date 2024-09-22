@@ -74,5 +74,4 @@ namespace notify {
         }
     }
 
-
 } // namespace notify

@@ -31,6 +31,4 @@ struct reset_turbo_item : wups::config::button_item {
 
 };
 
-
-
 #endif
