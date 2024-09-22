@@ -30,5 +30,5 @@ reset_turbo_item::on_started()
     vpad::reset();
     wpad::reset();
 
-    current_state = state::finished;
+    current_state = state::stopped;
 }
