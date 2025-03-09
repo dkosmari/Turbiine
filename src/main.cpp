@@ -1,7 +1,7 @@
 /*
  * Turbiine - Turn any controller into a turbo controller.
  *
- * Copyright (C) 2024  Daniel K. O.
+ * Copyright (C) 2025  Daniel K. O.
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
@@ -10,13 +10,13 @@
 #include <stdexcept>
 
 #include <notifications/notifications.h>
+#include <buttoncombo/api.h>
 #include <wups.h>
 
 #include <wupsxx/logger.hpp>
 
 #include "cfg.hpp"
-#include "vpad.hpp"
-#include "wpad.hpp"
+#include "core.hpp"
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -36,24 +36,42 @@ WUPS_PLUGIN_AUTHOR("Daniel K. O.");
 WUPS_PLUGIN_LICENSE("GPLv3");
 
 
+WUPS_USE_WUT_DEVOPTAB();
+WUPS_USE_STORAGE(PACKAGE_TARNAME);
+
+
 INITIALIZE_PLUGIN()
 {
     logger::guard guard{PACKAGE_NAME};
 
     try {
         auto notify_status = NotificationModule_InitLibrary();
-        if (notify_status != NOTIFICATION_MODULE_RESULT_SUCCESS)
+        if (notify_status)
             throw std::runtime_error{NotificationModule_GetStatusStr(notify_status)};
-        cfg::init();
+
+        auto combo_status = ButtonComboModule_InitLibrary();
+        if (combo_status)
+            throw std::runtime_error{ButtonComboModule_GetStatusStr(combo_status)};
+
+        cfg::initialize();
     }
     catch (std::exception& e) {
-        logger::printf("ERROR during plugin init: %s\n", e.what());
+        logger::printf("Error initializing: %s\n", e.what());
     }
 }
 
 
 DEINITIALIZE_PLUGIN()
 {
+    logger::guard guard{PACKAGE_NAME};
+    try {
+        cfg::finalize();
+    }
+    catch (std::exception& e) {
+        logger::printf("Error finalizing: %s\n", e.what());
+    }
+
+    ButtonComboModule_DeInitLibrary();
     NotificationModule_DeInitLibrary();
 }
 
@@ -66,7 +84,6 @@ ON_APPLICATION_START()
 
 ON_APPLICATION_ENDS()
 {
-    vpad::reset();
-    wpad::reset();
+    core::reset();
     logger::finalize();
 }

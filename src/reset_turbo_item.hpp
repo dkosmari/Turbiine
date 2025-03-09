@@ -14,7 +14,7 @@
 #include <wupsxx/button_item.hpp>
 
 
-struct reset_turbo_item : wups::config::button_item {
+struct reset_turbo_item : wups::button_item {
 
     reset_turbo_item();
 

@@ -1,7 +1,7 @@
 /*
  * Turbiine - Turn any controller into a turbo controller.
  *
- * Copyright (C) 2024  Daniel K. O.
+ * Copyright (C) 2025  Daniel K. O.
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
@@ -10,20 +10,18 @@
 #define CFG_HPP
 
 #include <array>
+#include <chrono>
 
-#include <wupsxx/button_combo.hpp>
+#include <wupsxx/option.hpp>
 
 
 namespace cfg {
 
-    inline constexpr unsigned max_toggle_combos = 4;
+    extern wups::option<bool> enabled;
+    extern wups::option<std::chrono::milliseconds> period;
 
-    extern bool enabled;
-    extern int period;
-    extern std::array<wups::utils::button_combo,
-                      max_toggle_combos> toggle_combo;
-
-    void init();
+    void initialize();
+    void finalize();
 
 } // namespace cfg
 

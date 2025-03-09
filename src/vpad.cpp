@@ -1,22 +1,21 @@
 /*
  * Turbiine - Turn any controller into a turbo controller.
  *
- * Copyright (C) 2024  Daniel K. O.
+ * Copyright (C) 2025  Daniel K. O.
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #include <array>
-#include <bitset>
 #include <cstdint>
 #include <cstdio>
 #include <ranges>
 
-#include <vpad/input.h>
+#include <coreinit/time.h>
 
 #include <wups/function_patching.h>
 
-#include <wupsxx/button_combo.hpp>
+#include <wupsxx/cafe_glyphs.h>
 #include <wupsxx/logger.hpp>
 
 #include "vpad.hpp"
@@ -26,12 +25,11 @@
 
 
 using std::array;
+using std::chrono::milliseconds;
 using std::int32_t;
 using std::uint32_t;
 using std::uint8_t;
 using std::views::enumerate;
-
-using wups::utils::button_combo;
 
 namespace logger = wups::logger;
 
@@ -41,127 +39,132 @@ namespace vpad {
     constexpr unsigned max_vpads = 2;
 
 
-    constexpr array button_list = {
-        VPAD_BUTTON_A,
-        VPAD_BUTTON_B,
-        VPAD_BUTTON_X,
-        VPAD_BUTTON_Y,
-        VPAD_BUTTON_LEFT,
-        VPAD_BUTTON_RIGHT,
-        VPAD_BUTTON_UP,
-        VPAD_BUTTON_DOWN,
-        VPAD_BUTTON_L,
-        VPAD_BUTTON_ZL,
-        VPAD_BUTTON_R,
-        VPAD_BUTTON_ZR,
-        VPAD_BUTTON_PLUS,
-        VPAD_BUTTON_MINUS,
+    struct button_info_t {
+        VPADButtons button;
+        const char* name;
+        const char* glyph;
     };
 
-    constexpr unsigned max_buttons = button_list.size();
-
-    using button_set = std::bitset<max_buttons>;
-
-    struct pad_state_t {
-        button_set turbo;
-        button_set fake_hold;
-        button_set suppress;
-        array<uint8_t, max_buttons> age{};
-        bool       toggling = false;
+    constexpr button_info_t button_list[] = {
+        { VPAD_BUTTON_UP,    "VPAD_BUTTON_UP",    CAFE_GLYPH_GAMEPAD_BTN_UP    },
+        { VPAD_BUTTON_DOWN,  "VPAD_BUTTON_DOWN",  CAFE_GLYPH_GAMEPAD_BTN_DOWN  },
+        { VPAD_BUTTON_LEFT,  "VPAD_BUTTON_LEFT",  CAFE_GLYPH_GAMEPAD_BTN_LEFT  },
+        { VPAD_BUTTON_RIGHT, "VPAD_BUTTON_RIGHT", CAFE_GLYPH_GAMEPAD_BTN_RIGHT },
+        { VPAD_BUTTON_A,     "VPAD_BUTTON_A",     CAFE_GLYPH_GAMEPAD_BTN_A     },
+        { VPAD_BUTTON_B,     "VPAD_BUTTON_B",     CAFE_GLYPH_GAMEPAD_BTN_B     },
+        { VPAD_BUTTON_X,     "VPAD_BUTTON_X",     CAFE_GLYPH_GAMEPAD_BTN_X     },
+        { VPAD_BUTTON_Y,     "VPAD_BUTTON_Y",     CAFE_GLYPH_GAMEPAD_BTN_Y     },
+        { VPAD_BUTTON_L,     "VPAD_BUTTON_L",     CAFE_GLYPH_GAMEPAD_BTN_L     },
+        { VPAD_BUTTON_R,     "VPAD_BUTTON_R",     CAFE_GLYPH_GAMEPAD_BTN_R     },
+        { VPAD_BUTTON_ZL,    "VPAD_BUTTON_ZL",    CAFE_GLYPH_GAMEPAD_BTN_ZL    },
+        { VPAD_BUTTON_ZR,    "VPAD_BUTTON_ZR",    CAFE_GLYPH_GAMEPAD_BTN_ZR    },
+        { VPAD_BUTTON_PLUS,  "VPAD_BUTTON_PLUS",  CAFE_GLYPH_GAMEPAD_BTN_PLUS  },
+        { VPAD_BUTTON_MINUS, "VPAD_BUTTON_MINUS", CAFE_GLYPH_GAMEPAD_BTN_MINUS },
     };
 
-    array<pad_state_t, max_vpads> state;
+    constexpr unsigned num_buttons = std::size(button_list);
 
 
-    // reset all variables
-    void
-    reset()
-    {
-        logger::printf("Resetting vpads\n");
-        state.fill({});
-    }
+    struct vpad_state {
+        uint32_t turbo = 0;
+        uint32_t fake_hold = 0;
+        uint32_t suppressed = 0;
+        array<OSTime, num_buttons> last_turbo_action{};
+        bool     toggling = false;
 
 
-    void
-    toggle_button(pad_state_t& pad,
-                  unsigned idx,
-                  VPADChan channel)
-    {
-        pad.toggling = false;
-        pad.turbo.flip(idx);
-
-        auto btn = button_list[idx];
-
-        wups::utils::vpad::button_set bs{btn};
-
-        const char* on_off = pad.turbo.test(idx) ? "turbo" : "normal";
-        notify::info("%s = %s",
-                     to_glyph(bs).c_str(),
-                     on_off);
-
-        logger::printf("vpad %u button %s [%u] = %s\n",
-                       unsigned{channel},
-                       to_string(bs).c_str(),
-                       idx,
-                       on_off);
-    }
+        void
+        reset()
+            noexcept
+        {
+            turbo = 0;
+            fake_hold = 0;
+            suppressed = 0;
+            last_turbo_action.fill(0);
+            toggling = false;
+        }
 
 
-    void
-    run_turbo_logic(pad_state_t& pad,
-                    VPADStatus& status,
-                    VPADChan channel)
-    {
-        for (auto [idx, btn] : enumerate(button_list)) {
+        bool
+        flip_toggling()
+            noexcept
+        {
+            return toggling = !toggling;
+        }
 
-            const auto not_btn = ~uint32_t{btn};
 
-            // If this is a suppressed button, don't process it, keep it clear and
-            // skip further turbo processing.
-            if (pad.suppress.test(idx)) {
-                // if the button is not held, or was released, we stop suppressing it
-                if (!(status.hold & btn) || (status.release & btn))
-                    pad.suppress.reset(idx);
+        void
+        process_vpad_read(VPADChan channel,
+                          VPADStatus& status,
+                          OSTime period)
+        {
+            for (auto [idx, info] : enumerate(button_list)) {
+                auto [btn, btn_name, btn_glyph] = info;
+                const auto not_btn = ~uint32_t{btn};
 
-                status.hold    &= not_btn;
-                status.trigger &= not_btn;
-                status.release &= not_btn;
+                // Button suppression logic.
+                if (suppressed & btn) {
+                    // if the button is not held, or was released, we stop suppressing it
+                    if (!(status.hold & btn) || (status.release & btn))
+                        suppressed &= not_btn;
 
-                continue;
-            }
+                    status.hold    &= not_btn;
+                    status.trigger &= not_btn;
+                    status.release &= not_btn;
 
-            if (pad.toggling && (status.trigger & btn)) {
+                    continue;
+                }
 
-                // We're in the toggling state, and a button was triggered.
-                toggle_button(pad, idx, channel);
+                // Turbo toggling logic.
+                if (toggling && (status.trigger & btn)) {
 
-                // Hide this event from the game.
-                status.hold    &= not_btn;
-                status.trigger &= not_btn;
-                status.release &= not_btn;
+                    toggling = false;
+                    turbo ^= btn;
 
-                pad.fake_hold.reset(idx);
+                    const char* on_off = turbo & btn ? "turbo" : "normal";
 
-                // This button will be suppressed until a release event happens.
-                pad.suppress.set(idx);
+                    notify::info("vpad %d button %s is %s",
+                                 int(channel),
+                                 btn_glyph,
+                                 on_off);
 
-                pad.age[idx] = 0;
+                    // Hide this button event from the game.
+                    status.hold    &= not_btn;
+                    status.trigger &= not_btn;
+                    status.release &= not_btn;
 
-            } else {
+                    // This button will be suppressed until a release event happens.
+                    suppressed |= btn;
 
-                // We're not in the toggling state, just check if it's a turbinated button
-                // held down.
+                    last_turbo_action[idx] = 0;
 
-                bool turbinated = pad.turbo.test(idx);
-                if (turbinated && (status.hold & btn)) {
+                    continue;
 
-                    if (++pad.age[idx] >= cfg::period) {
+                }
 
-                        pad.fake_hold.flip(idx);
-                        pad.age[idx] = 0;
+                // Early out: nothing else to process if button is not held.
+                if (!(status.hold & btn)) {
+                    fake_hold &= not_btn;
+                    continue;
+                }
 
-                        if (pad.fake_hold.test(idx)) {
+                OSTime now = OSGetSystemTime();
+
+                if (status.trigger & btn) {
+                    // Button was just pressed.
+                    fake_hold |= btn;
+                    last_turbo_action[idx] = now;
+                }
+
+                // If button is held and turbinated, generate fake presses.
+                if (turbo & btn) {
+                    OSTime age = now - last_turbo_action[idx];
+                    if (age >= period) {
+                        last_turbo_action[idx] = now;
+                        fake_hold ^= btn;
+                        if (fake_hold & btn) {
                             // simulate a press event
+                            status.hold    |= btn;
                             status.trigger |= btn;
                             status.release &= not_btn;
                         } else {
@@ -170,89 +173,73 @@ namespace vpad {
                             status.trigger &= not_btn;
                             status.release |= btn;
                         }
-
                     }
+                } // if turbo action
 
-                } else // if no turbo action, just copy the real button state
-                    pad.fake_hold.set(idx, status.hold & btn);
-
-            }
+            } // for each button
         }
+
+    };
+
+
+    array<vpad_state, max_vpads> states;
+
+
+    // Reset all variables.
+    void
+    reset()
+    {
+        logger::printf("Resetting turbo state for vpads\n");
+        for (auto& st : states)
+            st.reset();
+    }
+
+
+    void
+    on_toggle(VPADChan channel)
+    {
+        if (states[channel].flip_toggling())
+            notify::info("Toggling turbo on vpad %d...", int(channel));
+        else
+            notify::info("Canceled turbo toggle on vpad %d.", int(channel));
     }
 
 
     DECL_FUNCTION(int32_t,
                   VPADRead,
                   VPADChan channel,
-                  VPADStatus* buf,
+                  VPADStatus* status,
                   uint32_t count,
                   VPADReadError* error)
     {
-        int32_t result = real_VPADRead(channel, buf, count, error);
-        if (error && *error) [[unlikely]]
+        int32_t result = real_VPADRead(channel, status, count, error);
+        if (error && *error)
             return result;
-        if (!cfg::enabled)
+        if (result < 1)
             return result;
-        if (!buf) [[unlikely]]
+        if (!cfg::enabled.value)
+            return result;
+        if (!status) [[unlikely]]
+            return result;
+        if (channel < 0 || channel >= states.size()) [[unlikely]]
             return result;
 
-        auto& pad = state[channel];
+        OSTime period = OSMillisecondsToTicks(cfg::period.value.count());
+        auto& state = states[channel];
 
         bool is_loose = !VPADGetButtonProcMode(channel);
-        int32_t real_count = is_loose ? 1 : result;
-        for (int32_t idx = real_count - 1; idx >= 0; --idx) {
-            VPADStatus& status = buf[idx];
-            if (wups::utils::vpad::update(channel, status)) {
+        int real_count = is_loose ? 1 : count;
 
-                bool combo_activated = false;
-                for (const auto& combo : cfg::toggle_combo)
-                    if (wups::utils::vpad::triggered(channel, combo)) {
-                        combo_activated = true;
-                        break;
-                    }
-
-                // Note: when a combo is activated, don't do any turbo processing.
-                if (combo_activated) [[unlikely]] {
-
-                    // Enter or leave toggling state.
-                    pad.toggling = !pad.toggling;
-
-                    notify::info(pad.toggling
-                                 ? "Toggling turbo..."
-                                 : "Canceled turbo toggle.");
-
-                    // Keep all held buttons suppressed.
-                    for (auto [btn_idx, btn] : enumerate(button_list))
-                        if (status.hold & btn)
-                            pad.suppress.set(btn_idx);
-
-                    // Discard all buttons.
-
-                    // Note: buttons that were triggered right now are not released, since
-                    // their trigger event will never be recorded. We only release the
-                    // buttons that were being held before the trigger.
-                    status.release = status.hold ^ status.trigger;
-                    status.hold = 0;
-                    status.trigger = 0;
-
-                } else [[likely]]
-                    try {
-                        run_turbo_logic(pad, status, channel);
-                    }
-                    catch (std::exception& e) {
-                        logger::printf("Error running VPAD turbo logic: %s\n", e.what());
-                    }
-
-            }
-
-        }
+        // Process all samples from oldest (back) to newest (front).
+        for (int idx = real_count - 1; idx >= 0; --idx)
+            state.process_vpad_read(channel, status[idx], period);
 
         if (is_loose) {
-            // Every sample in buf should have the same button state.
-            for (int32_t idx = 1; idx < result; ++idx) {
-                buf[idx].hold = buf[0].hold;
-                buf[idx].trigger = buf[0].trigger;
-                buf[idx].release = buf[0].release;
+            // Every sample should have the same button state.
+            for (int idx = 1; idx < result; ++idx) {
+                status[idx].hold    = status[0].hold;
+                status[idx].trigger = status[0].trigger;
+                status[idx].release = status[0].release;
             }
         }
 

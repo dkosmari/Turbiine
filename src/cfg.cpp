@@ -1,14 +1,16 @@
 /*
  * Turbiine - Turn any controller into a turbo controller.
  *
- * Copyright (C) 2024  Daniel K. O.
+ * Copyright (C) 2025  Daniel K. O.
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include <vector>
+
 #include <wupsxx/bool_item.hpp>
 #include <wupsxx/button_combo_item.hpp>
-#include <wupsxx/int_item.hpp>
+#include <wupsxx/duration_items.hpp>
 #include <wupsxx/category.hpp>
 #include <wupsxx/init.hpp>
 #include <wupsxx/logger.hpp>
@@ -16,6 +18,7 @@
 
 #include "cfg.hpp"
 
+#include "core.hpp"
 #include "reset_turbo_item.hpp"
 
 #ifdef HAVE_CONFIG_H
@@ -24,102 +27,90 @@
 
 
 using std::array;
-
-using namespace wups::config;
-using namespace wups::utils;
+using std::chrono::milliseconds;
+using wups::button_combo::combo;
+using wups::option;
 
 namespace logger = wups::logger;
-
-
-WUPS_USE_WUT_DEVOPTAB();
-WUPS_USE_STORAGE(PACKAGE_TARNAME);
+using namespace std::literals;
 
 
 namespace cfg {
 
-    namespace defaults {
 
-        const bool enabled = false;
+    WUPSXX_OPTION("Enabled",
+                  bool, enabled, false);
 
-        const int period = 1;
+    WUPSXX_OPTION("Period",
+                  milliseconds, period, 16ms, 1ms, 100ms);
 
-        const array<button_combo, max_toggle_combos> toggle_combo = {
-            vpad::button_set{VPAD_BUTTON_TV,
-                             VPAD_BUTTON_ZL},
-            wpad::button_set{wpad::core::button_set{WPAD_BUTTON_MINUS,
-                                                    WPAD_BUTTON_PLUS,
-                                                    WPAD_BUTTON_B}},
-            wpad::button_set{wpad::classic::button_set{WPAD_CLASSIC_BUTTON_DOWN,
-                                                       WPAD_CLASSIC_BUTTON_MINUS,
-                                                       WPAD_CLASSIC_BUTTON_ZL}},
-            wpad::button_set{wpad::pro::button_set{WPAD_PRO_BUTTON_DOWN,
-                                                   WPAD_PRO_BUTTON_MINUS,
-                                                   WPAD_PRO_TRIGGER_ZL}}
-        };
+    WUPSXX_OPTION("Toggle turbo 1",
+                  combo, toggle1, combo::from_vpad(VPAD_BUTTON_TV | VPAD_BUTTON_ZL));
 
-    } // namespace defaults
+    WUPSXX_OPTION("Toggle turbo 2",
+                  combo, toggle2, combo::from_wpad_core(WPAD_BUTTON_MINUS |
+                                                        WPAD_BUTTON_PLUS |
+                                                        WPAD_BUTTON_B));
 
+    WUPSXX_OPTION("Toggle turbo 3",
+                  combo, toggle3, combo::from_wpad_classic({},
+                                                           WPAD_CLASSIC_BUTTON_DOWN |
+                                                           WPAD_CLASSIC_BUTTON_MINUS |
+                                                           WPAD_CLASSIC_BUTTON_ZL));
 
-    bool enabled = defaults::enabled;
-
-    int period = defaults::period;
-
-    array<button_combo, max_toggle_combos> toggle_combo = defaults::toggle_combo;
+    wups::button_combo::handle toggle1_handle;
+    wups::button_combo::handle toggle2_handle;
+    wups::button_combo::handle toggle3_handle;
 
 
     void
     load()
+        noexcept
     {
-        using wups::storage::load_or_init;
-
-        load_or_init("enabled", enabled, defaults::enabled);
-
-        load_or_init("period", period, defaults::period);
-
-        for (unsigned i = 0; i < max_toggle_combos; ++i)
-            load_or_init("toggle" + std::to_string(i + 1),
-                         toggle_combo[i],
-                         defaults::toggle_combo[i]);
+        try {
+            enabled.load();
+            period.load();
+            toggle1.load();
+            toggle2.load();
+            toggle3.load();
+        }
+        catch (std::exception& e) {
+            logger::printf("Error loading config: %s\n", e.what());
+        }
     }
 
 
     void
     save()
+        noexcept
     {
-        using wups::storage::store;
-
-        store("enabled", enabled);
-
-        store("period", period);
-
-        for (unsigned i = 0; i < max_toggle_combos; ++i)
-            store("toggle" + std::to_string(i + 1),
-                  toggle_combo[i]);
-
-        wups::storage::save();
+        try {
+            enabled.store();
+            period.store();
+            toggle1.store();
+            toggle2.store();
+            toggle3.store();
+            wups::save();
+        }
+        catch (std::exception& e) {
+            logger::printf("Error saving config: %s\n", e.what());
+        }
     }
 
 
     void
-    menu_open(category& root)
+    menu_open(wups::category& root)
     {
+        using wups::make_item;
+
+        // keep logger enabled until menu is closed
         logger::initialize(PACKAGE_NAME);
 
-        root.add(bool_item::create("Enabled",
-                                   enabled,
-                                   defaults::enabled,
-                                   "yes", "no"));
-
-        root.add(int_item::create("Period",
-                                  period,
-                                  defaults::period,
-                                  1, 100));
-
-        for  (unsigned i = 0; i < max_toggle_combos; ++i)
-            root.add(button_combo_item::create("Toggle turbo " + std::to_string(i + 1),
-                                               toggle_combo[i],
-                                               defaults::toggle_combo[i]));
-
+        root.add(make_item(enabled, "yes", "no"));
+        root.add(make_item(period));
+        root.add(make_item(toggle1, toggle1_handle));
+        root.add(make_item(toggle2, toggle2_handle));
+        root.add(make_item(toggle3, toggle3_handle));
         root.add(reset_turbo_item::create());
     }
 
@@ -139,11 +130,47 @@ namespace cfg {
 
 
     void
-    init()
+    initialize()
     {
-        wups::config::init(PACKAGE_NAME, menu_open, menu_close);
-
+        wups::init(PACKAGE_NAME, menu_open, menu_close);
         cfg::load();
+
+        try {
+            auto [handle, conflict] = wups::button_combo::create(PACKAGE_NAME " toggle 1",
+                                                                 toggle1.value,
+                                                                 core::on_toggle);
+            toggle1_handle = handle;
+        }
+        catch (std::exception& e) {
+            logger::printf("Error creating combo for toggle 1: %s\n", e.what());
+        }
+        try {
+            auto [handle, conflict] = wups::button_combo::create(PACKAGE_NAME " toggle 2",
+                                                                 toggle2.value,
+                                                                 core::on_toggle);
+            toggle2_handle = handle;
+        }
+        catch (std::exception& e) {
+            logger::printf("Error creating combo for toggle 2: %s\n", e.what());
+        }
+        try {
+            auto [handle, conflict] = wups::button_combo::create(PACKAGE_NAME " toggle 3",
+                                                                 toggle3.value,
+                                                                 core::on_toggle);
+            toggle3_handle = handle;
+        }
+        catch (std::exception& e) {
+            logger::printf("Error creating combo for toggle 3: %s\n", e.what());
+        }
+    }
+
+
+    void
+    finalize()
+    {
+        wups::button_combo::destroy(toggle1_handle);
+        wups::button_combo::destroy(toggle2_handle);
+        wups::button_combo::destroy(toggle3_handle);
     }
 
 } // namespace cfg
