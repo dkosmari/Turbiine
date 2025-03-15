@@ -58,6 +58,16 @@ namespace cfg {
                                                            WPAD_CLASSIC_BUTTON_MINUS |
                                                            WPAD_CLASSIC_BUTTON_ZL));
 
+
+    const std::vector<wups::option_base*> all_options{
+        &enabled,
+        &period,
+        &toggle1,
+        &toggle2,
+        &toggle3,
+    };
+
+
     wups::button_combo::handle toggle1_handle;
     wups::button_combo::handle toggle2_handle;
     wups::button_combo::handle toggle3_handle;
@@ -67,16 +77,15 @@ namespace cfg {
     load()
         noexcept
     {
-        try {
-            enabled.load();
-            period.load();
-            toggle1.load();
-            toggle2.load();
-            toggle3.load();
-        }
-        catch (std::exception& e) {
-            logger::printf("Error loading config: %s\n", e.what());
-        }
+        for (auto& opt : all_options)
+            try {
+                opt->load();
+            }
+            catch (std::exception& e) {
+                logger::printf("Error loading config item '%s': %s\n",
+                               opt->key.data(),
+                               e.what());
+            }
     }
 
 
@@ -85,11 +94,8 @@ namespace cfg {
         noexcept
     {
         try {
-            enabled.store();
-            period.store();
-            toggle1.store();
-            toggle2.store();
-            toggle3.store();
+            for (const auto& opt : all_options)
+                opt->store();
             wups::save();
         }
         catch (std::exception& e) {
@@ -132,31 +138,33 @@ namespace cfg {
     void
     initialize()
     {
+        using wups::button_combo::create;
+
         wups::init(PACKAGE_NAME, menu_open, menu_close);
         cfg::load();
 
         try {
-            auto [handle, conflict] = wups::button_combo::create(PACKAGE_NAME " toggle 1",
-                                                                 toggle1.value,
-                                                                 core::on_toggle);
+            auto [handle, conflict] = create(PACKAGE_NAME " toggle 1",
+                                             toggle1.value,
+                                             core::on_toggle);
             toggle1_handle = handle;
         }
         catch (std::exception& e) {
             logger::printf("Error creating combo for toggle 1: %s\n", e.what());
         }
         try {
-            auto [handle, conflict] = wups::button_combo::create(PACKAGE_NAME " toggle 2",
-                                                                 toggle2.value,
-                                                                 core::on_toggle);
+            auto [handle, conflict] = create(PACKAGE_NAME " toggle 2",
+                                             toggle2.value,
+                                             core::on_toggle);
             toggle2_handle = handle;
         }
         catch (std::exception& e) {
             logger::printf("Error creating combo for toggle 2: %s\n", e.what());
         }
         try {
-            auto [handle, conflict] = wups::button_combo::create(PACKAGE_NAME " toggle 3",
-                                                                 toggle3.value,
-                                                                 core::on_toggle);
+            auto [handle, conflict] = create(PACKAGE_NAME " toggle 3",
+                                             toggle3.value,
+                                             core::on_toggle);
             toggle3_handle = handle;
         }
         catch (std::exception& e) {
@@ -168,9 +176,10 @@ namespace cfg {
     void
     finalize()
     {
-        wups::button_combo::destroy(toggle1_handle);
-        wups::button_combo::destroy(toggle2_handle);
-        wups::button_combo::destroy(toggle3_handle);
+        using wups::button_combo::destroy;
+        destroy(toggle1_handle);
+        destroy(toggle2_handle);
+        destroy(toggle3_handle);
     }
 
 } // namespace cfg

@@ -38,33 +38,60 @@ namespace wpad {
     constexpr unsigned max_wpads = 7;
 
 
-    // Class to keep track of trigger/release bits.
-    struct aux_t {
+    // Simple class to track buttons triggered and released; also perform suppression logic.
+    template<typename T>
+    struct button_tracker {
 
-        uint32_t trigger = 0;
-        uint32_t hold    = 0;
-        uint32_t release = 0;
+        T hold     = 0;
+        T trigger  = 0;
+        T release  = 0;
+        T suppress = 0;
 
 
         void
         reset()
             noexcept
         {
-            trigger = 0;
-            hold    = 0;
-            release = 0;
+            hold     = 0;
+            trigger  = 0;
+            release  = 0;
+            suppress = 0;
         }
 
 
         void
-        update(uint32_t buttons)
+        update(T buttons)
             noexcept
         {
-            uint32_t changed = hold ^ buttons;
-            hold = buttons;
-            trigger = changed &  buttons;
-            release = changed & ~buttons;
+            T changed = hold ^ buttons;
+            hold      = buttons;
+            trigger   = changed &  buttons;
+            release   = changed & ~buttons;
         }
+
+        // void
+        // block_triggered()
+        //     noexcept
+        // {
+        //     suppress |= trigger;
+        // }
+
+
+        // void
+        // unblock_released()
+        //     noexcept
+        // {
+        //     suppress &= ~release;
+        // }
+
+
+        // template<typename U>
+        // void
+        // suppress_buttons(U& buttons)
+        //     noexcept
+        // {
+        //     buttons &= ~suppress;
+        // }
 
     };
 
@@ -180,14 +207,14 @@ namespace wpad {
     } // namespace ext
 
 
-    template<unsigned N>
+    template<typename T,
+             unsigned N>
     struct state_t {
 
-        uint32_t turbo = 0;
-        uint32_t fake_hold = 0;
-        uint32_t suppressed = 0;
+        T turbo      = 0;
+        T fake_hold  = 0;
         array<OSTime, N> last_turbo_action{};
-        aux_t aux;
+        button_tracker<T> tracker;
 
 
         void
@@ -196,17 +223,16 @@ namespace wpad {
         {
             turbo       = 0;
             fake_hold   = 0;
-            suppressed  = 0;
             last_turbo_action.fill(0);
-            aux.reset();
+            tracker.reset();
         }
 
 
         void
-        update(uint32_t buttons)
+        update(T buttons)
             noexcept
         {
-            aux.update(buttons);
+            tracker.update(buttons);
         }
 
 
@@ -218,24 +244,14 @@ namespace wpad {
                         OSTime period,
                         const auto& button_list)
         {
-            aux.update(buttons);
+            tracker.update(buttons);
 
             for (auto [idx, info] : enumerate(button_list)) {
                 auto [btn, btn_name, btn_glyph] = info;
                 const auto not_btn = ~static_cast<BTN>(btn);
 
-                // Button suppression logic.
-                if (suppressed & btn) {
-                    // if the button is not held, we stop suppressing it
-                    if (!(aux.hold & btn))
-                        suppressed &= not_btn;
-
-                    buttons &= not_btn;
-                    continue;
-                }
-
                 // Turbo toggling logic.
-                if (toggling && (aux.trigger & btn)) {
+                if (toggling && (tracker.trigger & btn)) [[unlikely]]{
 
                     toggling = false;
                     turbo ^= btn;
@@ -247,11 +263,11 @@ namespace wpad {
                                  btn_glyph,
                                  on_off);
 
-                    // Hide this button event from the game.
+                    // Hide this press from the game.
                     buttons &= not_btn;
 
-                    // This button will be suppressed until a release event happens.
-                    suppressed |= btn;
+                    // Block this button until it's released.
+                    tracker.suppress |= btn;
 
                     last_turbo_action[idx] = 0;
 
@@ -259,24 +275,27 @@ namespace wpad {
 
                 }
 
-                // Early out: nothing else to process if button is not held.
-                if (!(aux.hold & btn)) {
-                    fake_hold &= not_btn;
-                    continue;
-                }
-
                 OSTime now = OSGetSystemTime();
 
-                if (aux.trigger & btn) {
+                if (tracker.trigger & btn) {
                     // Button was just pressed.
                     fake_hold |= btn;
                     last_turbo_action[idx] = now;
+                    continue;
                 }
 
-                // If button is held and turbinated, generate fake presses.
-                if (turbo & btn) {
+                if (tracker.release & btn) {
+                    // Button was just released.
+                    fake_hold &= not_btn;
+                    last_turbo_action[idx] = 0;
+                    continue;
+                }
+
+                // If button is held and turbinated, do turbo action.
+                if (buttons & btn && turbo & btn) {
                     OSTime age = now - last_turbo_action[idx];
                     if (age >= period) {
+                        // time to generate turbo events
                         last_turbo_action[idx] = now;
                         fake_hold ^= btn;
                         if (fake_hold & btn) {
@@ -286,6 +305,9 @@ namespace wpad {
                             // simulate a release event
                             buttons &= not_btn;
                         }
+                    } else {
+                        // in between turbo events, just copy fake_hold
+                        buttons = (buttons & not_btn) | (fake_hold & btn);
                     }
                 } // if turbo action
 
@@ -293,16 +315,13 @@ namespace wpad {
 
         }
 
-
-    };
-
-
+    }; // state_t<T, N>
 
 
     struct wpad_state {
 
-        state_t<core::num_buttons> core;
-        state_t<ext::num_buttons>  ext;
+        state_t<uint16_t, core::num_buttons> core;
+        state_t<uint32_t, ext::num_buttons>  ext;
         bool toggling = false;
         WPADExtensionType ext_type = WPAD_EXT_CORE;
 
@@ -360,7 +379,6 @@ namespace wpad {
                                         ext::nunchuk::button_list);
                     break;
 
-
                 case WPAD_EXT_CLASSIC:
                 case WPAD_EXT_MPLUS_CLASSIC:
                     core.process_buttons(channel,
@@ -400,7 +418,7 @@ namespace wpad {
     void
     reset()
     {
-        logger::printf("Resetting turbo state for wpads\n");
+        logger::printf("Resetting turbo state for wiimotes\n");
         for (auto& st : states)
             st.reset();
     }
@@ -410,9 +428,9 @@ namespace wpad {
     on_toggle(WPADChan channel)
     {
         if (states[channel].flip_toggling())
-            notify::info("Toggling turbo on vpad %d...", int(channel));
+            notify::info("Toggling turbo on wiimote %d...", int(channel));
         else
-            notify::info("Canceled turbo toggle on vpad %d.", int(channel));
+            notify::info("Canceled turbo toggle on wiimote %d.", int(channel));
     }
 
 
@@ -427,6 +445,8 @@ namespace wpad {
         if (!status) [[unlikely]]
             return;
         if (channel < 0 || channel >= states.size()) [[unlikely]]
+            return;
+        if (status->error)
             return;
 
         OSTime period = OSMillisecondsToTicks(cfg::period.value.count());

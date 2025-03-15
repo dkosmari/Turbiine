@@ -142,24 +142,27 @@ namespace vpad {
 
                 }
 
-                // Early out: nothing else to process if button is not held.
-                if (!(status.hold & btn)) {
-                    fake_hold &= not_btn;
-                    continue;
-                }
-
                 OSTime now = OSGetSystemTime();
 
                 if (status.trigger & btn) {
                     // Button was just pressed.
                     fake_hold |= btn;
                     last_turbo_action[idx] = now;
+                    continue;
                 }
 
-                // If button is held and turbinated, generate fake presses.
-                if (turbo & btn) {
+                if (status.release & btn) {
+                    // Button was just released.
+                    fake_hold &= not_btn;
+                    last_turbo_action[idx] = 0;
+                    continue;
+                }
+
+                // If button is held and turbinated, do turbo action.
+                if (status.hold & btn && turbo & btn) {
                     OSTime age = now - last_turbo_action[idx];
                     if (age >= period) {
+                        // time to generate turbo events
                         last_turbo_action[idx] = now;
                         fake_hold ^= btn;
                         if (fake_hold & btn) {
@@ -173,6 +176,9 @@ namespace vpad {
                             status.trigger &= not_btn;
                             status.release |= btn;
                         }
+                    } else {
+                        // in between turbo events, just copy fake_hold
+                        status.hold = (status.hold & not_btn) | (fake_hold & btn);
                     }
                 } // if turbo action
 
@@ -189,7 +195,7 @@ namespace vpad {
     void
     reset()
     {
-        logger::printf("Resetting turbo state for vpads\n");
+        logger::printf("Resetting turbo state for gamepads\n");
         for (auto& st : states)
             st.reset();
     }
@@ -199,9 +205,9 @@ namespace vpad {
     on_toggle(VPADChan channel)
     {
         if (states[channel].flip_toggling())
-            notify::info("Toggling turbo on vpad %d...", int(channel));
+            notify::info("Toggling turbo on gamepad %d...", int(channel));
         else
-            notify::info("Canceled turbo toggle on vpad %d.", int(channel));
+            notify::info("Canceled turbo toggle on gamepad %d.", int(channel));
     }
 
 
@@ -228,19 +234,20 @@ namespace vpad {
         auto& state = states[channel];
 
         bool is_loose = !VPADGetButtonProcMode(channel);
-        int real_count = is_loose ? 1 : count;
-
-        // Process all samples from oldest (back) to newest (front).
-        for (int idx = real_count - 1; idx >= 0; --idx)
-            state.process_vpad_read(channel, status[idx], period);
-
         if (is_loose) {
-            // Every sample should have the same button state.
+            // Every sample has the same button state.
+            state.process_vpad_read(channel, status[0], period);
+            // Copy modified button state to all samples.
             for (int idx = 1; idx < result; ++idx) {
                 status[idx].hold    = status[0].hold;
                 status[idx].trigger = status[0].trigger;
                 status[idx].release = status[0].release;
             }
+        } else {
+            // Every sample has different button state, process from oldest (back) to
+            // newest (front).
+            for (int idx = result - 1; idx >= 0; --idx)
+                state.process_vpad_read(channel, status[idx], period);
         }
 
         return result;
