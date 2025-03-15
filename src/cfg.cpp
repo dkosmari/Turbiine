@@ -42,7 +42,7 @@ namespace cfg {
                   bool, enabled, false);
 
     WUPSXX_OPTION("Period",
-                  milliseconds, period, 16ms, 1ms, 100ms);
+                  milliseconds, period, 16ms, 1ms, 1000ms);
 
     WUPSXX_OPTION("Toggle turbo 1",
                   combo, toggle1, combo::from_vpad(VPAD_BUTTON_TV | VPAD_BUTTON_ZL));
