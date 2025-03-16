@@ -36,8 +36,12 @@ To configure the plugin, open the Plugin Config Menu (**L + DOWN + SELECT**) and
   press-release cycle is *50+50 = 100 ms*, giving you 10 button presses per second (bps). The
   default is **16 ms**, which produces roughly 30 bps.
 
-  > Note that some games restrict how fast they will register button presses, so you might
+  > **Note:** some games restrict how fast they will register button presses, so you might
   > need to increase the period.
+  
+  > **Note:** turbo actions can only happen when the game checks the controller's
+  > buttons. If a game only reads inputs 30 times per second, the plugin can only generate
+  > up to 30 actions per second, or 15 bps.
 
 - **Toggle turbo 1, 2, 3, 4**: Sets the button shortcut for turning turbo *on* or *off*.
 
@@ -72,8 +76,14 @@ This is a standard Automake package; a Docker build script is also provided.
 
 #### Dependencies
 
+- [wut](https://github.com/devkitPro/wut/) - currently, the devkitPro package is too old,
+  you will need to compile and install the current wut from the repository.
+
 - [WiiUPluginSystem](https://github.com/wiiu-env/WiiUPluginSystem)
+
 - [libnotifications](https://github.com/wiiu-env/libnotifications)
+
+- [libbuttoncombo](https://github.com/wiiu-env/libbuttoncombo)
 
 If you got a release tarball (`.tar.gz`) you can skip step 0.
 
@@ -83,15 +93,14 @@ If you got a release tarball (`.tar.gz`) you can skip step 0.
 
 2. `make`
 
-3. (optional) If your Wii U is named `wiiu` in your local network, and is running the
-   ftpiiu plugin, you can also use these:
+3. (optional) If your Wii U is named `wiiu` in your local network, you can also use these:
 
-   - `make install`: install the plugin into the default Aroma path. Requires `curl`.
+   - `make install`: install via ftp, requires `curl` in your system.
 
-   - `make uninstall`: uninstall the plugin from the default Aroma path. Requires `curl`.
+   - `make uninstall`: uninstall via ftp, requires `curl` in your system.
 
-   - `make run`: load the plugin without installing it on the Wii U. Requires `wiiload`
-     from the `wut-tools` package.
+   - `make run`: load the plugin without installing, requires `wiiload` package from
+     devkitPro.
 
 
 ### Building with Docker
