@@ -11,46 +11,53 @@ This is an Aroma plugin to turn any Wii U controller into a turbo controller.
 
 ## Usage
 
-- Press the toggle button combo (e.g. `TV + ZL` on the Gamepad). A notification will be
+- Press the toggle button shortcut (e.g. **TV + ZL** on the Gamepad). A notification will be
   shown.
 
-- Press a button; it will toggle between normal and turbo mode. A notification will be
-  shown.
+- Press a button; it will toggle between **normal** and **turbo** mode. A notification
+  will be shown.
 
 **Note:** Turbo action is disabled every time you start a game, or return to the Wii U Menu.
 
 
 ## Configuration
 
-To configure the plugin, open the Plugin Config Menu (**L + ↓ + SELECT**) and enter the
+To configure the plugin, open the Plugin Config Menu (**L + DOWN + SELECT**) and enter the
 **Turbiine** plugin, to access the options:
 
 - **Enabled**: Enables or disables the plugin.
 
-- **Period**: How many input samples it takes for the turbo button to toggle on or off. Default
-  is `1`, higher values will slow down the button press rate. Increase this value if you
-  want to slow down the turbo action.
+- **Period**: The time interval between turbo actions. Pressing the button is one action,
+  releasing the button is one action. For instance, a value of *50 ms* will make the
+  button be held down for *50 ms*, then released for *50 ms*, and so on; so a full
+  press-release cycle is *50+50 = 100 ms*, giving you 10 button presses per second (bps). The
+  default is **16 ms**, which produces roughly 30 bps.
 
-- **Toggle turbo 1, 2, 3, 4**: Sets the button combo for turning turbo on or off.
+  > Note that some games restrict how fast they will register button presses, so you might
+  > need to increase the period.
 
-  1. Press `A` to focus the button combo you want to change.
+- **Toggle turbo 1, 2, 3, 4**: Sets the button shortcut for turning turbo *on* or *off*.
 
-  2. Hold the buttons you want for the button combo, until they are recorded.
+  1. Press `A` to focus the button shortcut you want to change.
+
+  2. Hold down the buttons you want to use for the button shortcut, until they are
+     registered.
 
   3. Release all the buttons.
 
   4. Press either:
 
-       - `A` to confirm the new button combo;
+       - `A` to confirm the new button shortcut;
 
        - `B` to cancel;
 
-       - `X`/`1` to reset to the default button combo.
+       - `X`/`1` to reset to the default button shortcut.
 
-  If you leave the button combo empty, because you didn't hold any button long enough in
-  step *2*, the combo will be considered disabled.
+  If you leave the button shortcut empty, because you didn't hold any button long enough in
+  step *2*, the shortcut will be considered disabled.
 
-- **Reset all turbos...**: Immediately disables all turbo action on all controllers.
+- **Reset all turbos...**: Immediately disables all turbo action on all controllers. All
+  buttons go back to normal.
 
 
 ## Build instructions

@@ -39,7 +39,7 @@ namespace cfg {
 
 
     WUPSXX_OPTION("Enabled",
-                  bool, enabled, false);
+                  bool, enabled, true);
 
     WUPSXX_OPTION("Period",
                   milliseconds, period, 16ms, 1ms, 1000ms);
