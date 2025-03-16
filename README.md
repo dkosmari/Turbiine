@@ -17,7 +17,7 @@ This is an Aroma plugin to turn any Wii U controller into a turbo controller.
 
 ## Usage
 
-- Activate the toggle shortcut (e.g. **TV + ZL** on the Gamepad.)
+- Activate the toggle shortcut (e.g. `TV` + `ZL` on the Gamepad.)
 
 - Press any button; it will turn turbo **on** (or **off**) for that button.
 
@@ -29,15 +29,15 @@ This is an Aroma plugin to turn any Wii U controller into a turbo controller.
 
 ## Configuration
 
-To configure the plugin, open the Plugin Config Menu (**L + DOWN + SELECT**) and enter the
-**Turbiine** plugin, to access the options:
+To configure the plugin, open the Plugin Config Menu (`L` + `DOWN` + `SELECT`) and enter
+the **Turbiine** plugin, to access the options:
 
 - **Enabled**: Enables or disables the plugin.
 
 - **Period**: The time interval between turbo actions. Pressing the button is one action,
-  releasing the button is one action. For instance, a value of *50 ms* will make the
-  button be held down for *50 ms*, then released for *50 ms*, and so on; so a full
-  press-then-release cycle is *50+50 = 100 ms*, giving you 10 button presses per second
+  releasing the button is one action. For instance, a value of **50 ms** will make the
+  button be held down for **50 ms**, then released for **50 ms**, and so on; so a full
+  press-then-release cycle is **50+50 = 100 ms**, giving you 10 button presses per second
   (bps). The default is **16 ms**, which produces roughly 30 bps.
 
   > **Note:** some games restrict how fast they will register button presses, so you might
@@ -47,9 +47,9 @@ To configure the plugin, open the Plugin Config Menu (**L + DOWN + SELECT**) and
   > buttons. If a game only reads inputs 30 times per second, the plugin can only generate
   > up to 30 actions per second, or 15 bps.
 
-- **Toggle turbo 1, 2, 3**: Sets the button shortcut for turning turbo *on* or *off*.
+- **Toggle turbo 1, 2, 3**: Sets the button shortcut for turning turbo **on** or **off**.
 
-  1. Press **A** on the shortcut you want to change.
+  1. Press `A` on the shortcut you want to change.
 
   2. Hold down the buttons you want to use for the button shortcut, until they are
      registered.
@@ -58,11 +58,11 @@ To configure the plugin, open the Plugin Config Menu (**L + DOWN + SELECT**) and
 
   4. Press either:
 
-     - **A** to confirm the new button shortcut;
+     - `A` to confirm the new button shortcut;
 
-     - **B** to cancel;
+     - `B` to cancel;
 
-     - **X**/**1** to reset to the default button shortcut.
+     - `X`/`1` to reset to the default button shortcut.
 
     If you leave the button shortcut empty, because you didn't hold any buttons long
     enough in step *ii*, the shortcut will be considered disabled.
