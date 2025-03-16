@@ -46,7 +46,7 @@ To configure the plugin, open the Plugin Config Menu (**L + DOWN + SELECT**) and
   > buttons. If a game only reads inputs 30 times per second, the plugin can only generate
   > up to 30 actions per second, or 15 bps.
 
-- **Toggle turbo 1, 2, 3, 4**: Sets the button shortcut for turning turbo *on* or *off*.
+- **Toggle turbo 1, 2, 3**: Sets the button shortcut for turning turbo *on* or *off*.
 
   1. Press `A` to focus the button shortcut you want to change.
 
