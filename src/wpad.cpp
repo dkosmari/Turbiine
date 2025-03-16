@@ -69,30 +69,6 @@ namespace wpad {
             release   = changed & ~buttons;
         }
 
-        // void
-        // block_triggered()
-        //     noexcept
-        // {
-        //     suppress |= trigger;
-        // }
-
-
-        // void
-        // unblock_released()
-        //     noexcept
-        // {
-        //     suppress &= ~release;
-        // }
-
-
-        // template<typename U>
-        // void
-        // suppress_buttons(U& buttons)
-        //     noexcept
-        // {
-        //     buttons &= ~suppress;
-        // }
-
     };
 
 
@@ -428,9 +404,9 @@ namespace wpad {
     on_toggle(WPADChan channel)
     {
         if (states[channel].flip_toggling())
-            notify::info("Toggling turbo on wiimote %d...", int(channel));
+            notify::info("Toggling turbo on wiimote %d...", int(channel) + 1);
         else
-            notify::info("Canceled turbo toggle on wiimote %d.", int(channel));
+            notify::info("Canceled turbo toggle on wiimote %d.", int(channel) + 1);
     }
 
 

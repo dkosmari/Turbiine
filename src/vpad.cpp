@@ -123,7 +123,7 @@ namespace vpad {
 
                     const char* on_off = turbo & btn ? "turbo" : "normal";
 
-                    notify::info("vpad %d button %s is %s",
+                    notify::info("gamepad %d button %s is %s",
                                  int(channel) + 1,
                                  btn_glyph,
                                  on_off);
@@ -205,9 +205,9 @@ namespace vpad {
     on_toggle(VPADChan channel)
     {
         if (states[channel].flip_toggling())
-            notify::info("Toggling turbo on gamepad %d...", int(channel));
+            notify::info("Toggling turbo on gamepad %d...", int(channel) + 1);
         else
-            notify::info("Canceled turbo toggle on gamepad %d.", int(channel));
+            notify::info("Canceled turbo toggle on gamepad %d.", int(channel) + 1);
     }
 
 
