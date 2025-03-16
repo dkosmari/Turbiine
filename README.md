@@ -21,8 +21,7 @@ This is an Aroma plugin to turn any Wii U controller into a turbo controller.
 
 - Press any button; it will turn turbo **on** (or **off**) for that button.
 
-> **Note:** Only the controller where you activated the shortcut will be modified. The
-> other controller stay the same.
+> **Note:** Only the controller where you activated the shortcut will be modified.
 
 > **Note:** Turbo is disabled every time you start a game, or return to the Wii U Menu.
 
