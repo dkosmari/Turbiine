@@ -8,8 +8,11 @@ This is an Aroma plugin to turn any Wii U controller into a turbo controller.
 
 > It’s time to level up your game!
 
-[<p align="center"><img src="assets/hbasbadge-wiiu.png" width="335"
-height="96"></p>](https://hb-app.store/wiiu/Turbiine)
+<p align="center">
+    <a href="https://hb-app.store/wiiu/Turbiine">
+        <img src="assets/hbasbadge-wiiu.png" width="335" height="96">
+    </a>
+</p>
 
 
 ## Usage
