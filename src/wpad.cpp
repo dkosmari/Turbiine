@@ -259,7 +259,7 @@ namespace wpad {
                     const char* on_off = turbo & btn ? "turbo" : "normal";
 
                     notify::info("wiimote %d button %s is %s",
-                                 int(channel),
+                                 int(channel) + 1,
                                  btn_glyph,
                                  on_off);
 
