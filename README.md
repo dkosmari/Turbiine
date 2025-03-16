@@ -48,20 +48,20 @@ To configure the plugin, open the Plugin Config Menu (**L + DOWN + SELECT**) and
 
 - **Toggle turbo 1, 2, 3**: Sets the button shortcut for turning turbo *on* or *off*.
 
-  i. Press `A` to focus the button shortcut you want to change.
+  1. Press `A` to focus the button shortcut you want to change.
 
-  ii. Hold down the buttons you want to use for the button shortcut, until they are
+  2. Hold down the buttons you want to use for the button shortcut, until they are
      registered.
 
-  iii. Release all the buttons.
+  3. Release all the buttons.
 
-  iv. Press either:
+  4. Press either:
 
-       - `A` to confirm the new button shortcut;
+     - `A` to confirm the new button shortcut;
 
-       - `B` to cancel;
+     - `B` to cancel;
 
-       - `X`/`1` to reset to the default button shortcut.
+     - `X`/`1` to reset to the default button shortcut.
 
   If you leave the button shortcut empty, because you didn't hold any button long enough in
   step *ii*, the shortcut will be considered disabled.
