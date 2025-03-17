@@ -12,7 +12,7 @@
 
 
 reset_turbo_item::reset_turbo_item() :
-    wups::button_item{"Reset all turbos..."}
+    wups::button_item{"Disable all turbos..."}
 {}
 
 

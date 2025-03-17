@@ -84,7 +84,7 @@ namespace cfg {
                 opt->load();
             }
             catch (std::exception& e) {
-                logger::printf("Error loading config item '%s': %s\n",
+                logger::printf("Error loading config key '%s': %s\n",
                                opt->key.data(),
                                e.what());
             }

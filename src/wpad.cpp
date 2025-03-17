@@ -179,7 +179,11 @@ namespace wpad {
         } // namespace pro
 
 
-        constexpr unsigned num_buttons = std::max({ nunchuk::num_buttons, classic::num_buttons, pro::num_buttons });
+        constexpr unsigned num_buttons = std::max({
+                nunchuk::num_buttons,
+                classic::num_buttons,
+                pro::num_buttons
+            });
 
     } // namespace ext
 
@@ -188,8 +192,8 @@ namespace wpad {
              unsigned N>
     struct state_t {
 
-        T turbo      = 0;
-        T fake_hold  = 0;
+        T turbo     = 0;
+        T fake_hold = 0;
         array<OSTime, N> last_turbo_action{};
         button_tracker<T> tracker;
 
@@ -198,8 +202,8 @@ namespace wpad {
         reset()
             noexcept
         {
-            turbo       = 0;
-            fake_hold   = 0;
+            turbo     = 0;
+            fake_hold = 0;
             last_turbo_action.fill(0);
             tracker.reset();
         }
@@ -235,6 +239,10 @@ namespace wpad {
 
                     const char* on_off = turbo & btn ? "turbo" : "normal";
 
+                    logger::printf("WPAD %d button %s is %s\n",
+                                   int(channel),
+                                   btn_name,
+                                   on_off);
                     notify::info::show("Wiimote %d button %s is %s",
                                        int(channel) + 1,
                                        btn_glyph,
@@ -395,7 +403,7 @@ namespace wpad {
     void
     reset()
     {
-        logger::printf("Resetting turbo state for wiimotes\n");
+        logger::printf("Resetting wpads\n");
         for (auto& st : states)
             st.reset();
     }

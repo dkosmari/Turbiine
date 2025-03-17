@@ -67,8 +67,8 @@ namespace vpad {
 
 
     struct vpad_state {
-        uint32_t turbo = 0;
-        uint32_t fake_hold = 0;
+        uint32_t turbo      = 0;
+        uint32_t fake_hold  = 0;
         uint32_t suppressed = 0;
         array<OSTime, num_buttons> last_turbo_action{};
         bool     toggling = false;
@@ -78,11 +78,11 @@ namespace vpad {
         reset()
             noexcept
         {
-            turbo = 0;
-            fake_hold = 0;
+            turbo      = 0;
+            fake_hold  = 0;
             suppressed = 0;
             last_turbo_action.fill(0);
-            toggling = false;
+            toggling   = false;
         }
 
 
@@ -124,6 +124,10 @@ namespace vpad {
 
                     const char* on_off = turbo & btn ? "turbo" : "normal";
 
+                    logger::printf("VPAD %d button %s is %s\n",
+                                   int(channel),
+                                   btn_name,
+                                   on_off);
                     notify::info::show("Gamepad %d button %s is %s",
                                        int(channel) + 1,
                                        btn_glyph,
@@ -196,7 +200,7 @@ namespace vpad {
     void
     reset()
     {
-        logger::printf("Resetting turbo state for gamepads\n");
+        logger::printf("Resetting vpads\n");
         for (auto& st : states)
             st.reset();
     }
@@ -236,9 +240,9 @@ namespace vpad {
 
         bool is_loose = !VPADGetButtonProcMode(channel);
         if (is_loose) {
-            // Every sample has the same button state.
+            // Every sample has the same button state, so we only care about the first.
             state.process_vpad_read(channel, status[0], period);
-            // Copy modified button state to all samples.
+            // Copy modified button state to the rest of the buffer.
             for (int idx = 1; idx < result; ++idx) {
                 status[idx].hold    = status[0].hold;
                 status[idx].trigger = status[0].trigger;
