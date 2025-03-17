@@ -17,11 +17,12 @@
 
 #include <wupsxx/cafe_glyphs.h>
 #include <wupsxx/logger.hpp>
+#include <wupsxx/notify.hpp>
 
 #include "vpad.hpp"
 
 #include "cfg.hpp"
-#include "notify.hpp"
+
 
 
 using std::array;
@@ -32,7 +33,7 @@ using std::uint8_t;
 using std::views::enumerate;
 
 namespace logger = wups::logger;
-
+namespace notify = wups::notify;
 
 namespace vpad {
 
@@ -123,10 +124,10 @@ namespace vpad {
 
                     const char* on_off = turbo & btn ? "turbo" : "normal";
 
-                    notify::info("gamepad %d button %s is %s",
-                                 int(channel) + 1,
-                                 btn_glyph,
-                                 on_off);
+                    notify::info::show("Gamepad %d button %s is %s",
+                                       int(channel) + 1,
+                                       btn_glyph,
+                                       on_off);
 
                     // Hide this button event from the game.
                     status.hold    &= not_btn;
@@ -205,9 +206,9 @@ namespace vpad {
     on_toggle(VPADChan channel)
     {
         if (states[channel].flip_toggling())
-            notify::info("Toggling turbo on gamepad %d...", int(channel) + 1);
+            notify::info::show("Toggling turbo on gamepad %d...", int(channel) + 1);
         else
-            notify::info("Canceled turbo toggle on gamepad %d.", int(channel) + 1);
+            notify::info::show("Canceled turbo toggle on gamepad %d.", int(channel) + 1);
     }
 
 

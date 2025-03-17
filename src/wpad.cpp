@@ -17,11 +17,11 @@
 
 #include <wupsxx/cafe_glyphs.h>
 #include <wupsxx/logger.hpp>
+#include <wupsxx/notify.hpp>
 
 #include "wpad.hpp"
 
 #include "cfg.hpp"
-#include "notify.hpp"
 
 
 using std::array;
@@ -31,6 +31,7 @@ using std::uint8_t;
 using std::views::enumerate;
 
 namespace logger = wups::logger;
+namespace notify = wups::notify;
 
 
 namespace wpad {
@@ -234,10 +235,10 @@ namespace wpad {
 
                     const char* on_off = turbo & btn ? "turbo" : "normal";
 
-                    notify::info("wiimote %d button %s is %s",
-                                 int(channel) + 1,
-                                 btn_glyph,
-                                 on_off);
+                    notify::info::show("Wiimote %d button %s is %s",
+                                       int(channel) + 1,
+                                       btn_glyph,
+                                       on_off);
 
                     // Hide this press from the game.
                     buttons &= not_btn;
@@ -404,9 +405,9 @@ namespace wpad {
     on_toggle(WPADChan channel)
     {
         if (states[channel].flip_toggling())
-            notify::info("Toggling turbo on wiimote %d...", int(channel) + 1);
+            notify::info::show("Toggling turbo on wiimote %d...", int(channel) + 1);
         else
-            notify::info("Canceled turbo toggle on wiimote %d.", int(channel) + 1);
+            notify::info::show("Canceled turbo toggle on wiimote %d.", int(channel) + 1);
     }
 
 

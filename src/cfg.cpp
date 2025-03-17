@@ -9,11 +9,11 @@
 #include <vector>
 
 #include <wupsxx/bool_item.hpp>
-#include <wupsxx/button_combo_item.hpp>
-#include <wupsxx/duration_items.hpp>
 #include <wupsxx/category.hpp>
+#include <wupsxx/duration_items.hpp>
 #include <wupsxx/init.hpp>
 #include <wupsxx/logger.hpp>
+#include <wupsxx/shortcut_item.hpp>
 #include <wupsxx/storage.hpp>
 
 #include "cfg.hpp"
@@ -26,12 +26,14 @@
 #endif
 
 
+namespace logger = wups::logger;
+namespace shortcut = wups::shortcut;
+
+using shortcut::combo;
 using std::array;
 using std::chrono::milliseconds;
-using wups::button_combo::combo;
 using wups::option;
 
-namespace logger = wups::logger;
 using namespace std::literals;
 
 
@@ -68,9 +70,9 @@ namespace cfg {
     };
 
 
-    wups::button_combo::handle toggle1_handle;
-    wups::button_combo::handle toggle2_handle;
-    wups::button_combo::handle toggle3_handle;
+    shortcut::handle toggle1_handle;
+    shortcut::handle toggle2_handle;
+    shortcut::handle toggle3_handle;
 
 
     void
@@ -110,7 +112,7 @@ namespace cfg {
         using wups::make_item;
 
         // keep logger enabled until menu is closed
-        logger::initialize(PACKAGE_NAME);
+        logger::initialize();
 
         root.add(make_item(enabled, "yes", "no"));
         root.add(make_item(period));
@@ -138,13 +140,13 @@ namespace cfg {
     void
     initialize()
     {
-        using wups::button_combo::create;
+        using shortcut::create;
 
         wups::init(PACKAGE_NAME, menu_open, menu_close);
         cfg::load();
 
         try {
-            auto [handle, conflict] = create(PACKAGE_NAME " toggle 1",
+            auto [handle, conflict] = create("Toggle 1",
                                              toggle1.value,
                                              core::on_toggle);
             toggle1_handle = handle;
@@ -153,7 +155,7 @@ namespace cfg {
             logger::printf("Error creating combo for toggle 1: %s\n", e.what());
         }
         try {
-            auto [handle, conflict] = create(PACKAGE_NAME " toggle 2",
+            auto [handle, conflict] = create("Toggle 2",
                                              toggle2.value,
                                              core::on_toggle);
             toggle2_handle = handle;
@@ -162,7 +164,7 @@ namespace cfg {
             logger::printf("Error creating combo for toggle 2: %s\n", e.what());
         }
         try {
-            auto [handle, conflict] = create(PACKAGE_NAME " toggle 3",
+            auto [handle, conflict] = create("Toggle 3",
                                              toggle3.value,
                                              core::on_toggle);
             toggle3_handle = handle;
@@ -176,7 +178,7 @@ namespace cfg {
     void
     finalize()
     {
-        using wups::button_combo::destroy;
+        using shortcut::destroy;
         destroy(toggle1_handle);
         destroy(toggle2_handle);
         destroy(toggle3_handle);

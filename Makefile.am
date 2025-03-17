@@ -31,7 +31,6 @@ turbiine_elf_SOURCES =						\
 	src/cfg.cpp src/cfg.hpp					\
 	src/core.cpp src/core.hpp				\
 	src/main.cpp						\
-	src/notify.cpp src/notify.hpp				\
 	src/reset_turbo_item.cpp src/reset_turbo_item.hpp	\
 	src/vpad.cpp src/vpad.hpp				\
 	src/wpad.cpp src/wpad.hpp

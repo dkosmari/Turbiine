@@ -28,10 +28,10 @@ namespace core {
 
 
     void
-    on_toggle(wups::button_combo::ctr_set controllers,
-              wups::button_combo::handle)
+    on_toggle(wups::shortcut::ctr_set src,
+              wups::shortcut::handle)
     {
-        switch (controllers) {
+        switch (src) {
             case BUTTON_COMBO_MODULE_CONTROLLER_VPAD_0:
                 vpad::on_toggle(VPAD_CHAN_0);
                 break;
@@ -60,7 +60,7 @@ namespace core {
                 wpad::on_toggle(WPAD_CHAN_6);
                 break;
             default:
-                logger::printf("Invalid controller to toggle: 0x%x\n", unsigned{controllers});
+                logger::printf("Invalid source to toggle: 0x%x\n", unsigned{src});
         }
     }
 

@@ -9,11 +9,11 @@
 #include <cstdint>
 #include <stdexcept>
 
-#include <notifications/notifications.h>
-#include <buttoncombo/api.h>
 #include <wups.h>
 
 #include <wupsxx/logger.hpp>
+#include <wupsxx/notify.hpp>
+#include <wupsxx/shortcut.hpp>
 
 #include "cfg.hpp"
 #include "core.hpp"
@@ -23,11 +23,13 @@
 #endif
 
 
+namespace logger   = wups::logger;
+namespace notify   = wups::notify;
+namespace shortcut = wups::shortcut;
+
+
 using std::int32_t;
 using std::uint32_t;
-
-namespace logger = wups::logger;
-
 
 WUPS_PLUGIN_NAME(PACKAGE_NAME);
 WUPS_PLUGIN_DESCRIPTION("Button goes BRRRRRRT!");
@@ -42,16 +44,15 @@ WUPS_USE_STORAGE(PACKAGE_TARNAME);
 
 INITIALIZE_PLUGIN()
 {
-    logger::guard guard{PACKAGE_NAME};
+    logger::set_prefix(PACKAGE_NAME);
+    logger::guard guard;
 
     try {
-        auto notify_status = NotificationModule_InitLibrary();
-        if (notify_status)
-            throw std::runtime_error{NotificationModule_GetStatusStr(notify_status)};
+        notify::initialize(PACKAGE_NAME);
+        notify::info::set_text_color(0xff, 0xff, 0xff);
+        notify::info::set_bg_color(0x10, 0x10, 0x40);
 
-        auto combo_status = ButtonComboModule_InitLibrary();
-        if (combo_status)
-            throw std::runtime_error{ButtonComboModule_GetStatusStr(combo_status)};
+        shortcut::initialize(PACKAGE_NAME);
 
         cfg::initialize();
     }
@@ -63,7 +64,7 @@ INITIALIZE_PLUGIN()
 
 DEINITIALIZE_PLUGIN()
 {
-    logger::guard guard{PACKAGE_NAME};
+    logger::guard guard;
     try {
         cfg::finalize();
     }
@@ -71,14 +72,14 @@ DEINITIALIZE_PLUGIN()
         logger::printf("Error finalizing: %s\n", e.what());
     }
 
-    ButtonComboModule_DeInitLibrary();
-    NotificationModule_DeInitLibrary();
+    shortcut::finalize();
+    notify::finalize();
 }
 
 
 ON_APPLICATION_START()
 {
-    logger::initialize(PACKAGE_NAME);
+    logger::initialize();
 }
 
 

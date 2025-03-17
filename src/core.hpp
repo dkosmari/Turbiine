@@ -9,7 +9,7 @@
 #ifndef CORE_HPP
 #define CORE_HPP
 
-#include <wupsxx/button_combo.hpp>
+#include <wupsxx/shortcut.hpp>
 
 
 namespace core {
@@ -19,8 +19,8 @@ namespace core {
 
 
     void
-    on_toggle(wups::button_combo::ctr_set controllers,
-              wups::button_combo::handle handle);
+    on_toggle(wups::shortcut::ctr_set src,
+              wups::shortcut::handle handle);
 
 } // namespace core
 
