@@ -66,7 +66,7 @@ the **Turbiine** plugin, to access the options:
     If you leave the button shortcut empty, because you didn't hold any buttons long
     enough in step *ii*, the shortcut will be considered disabled.
 
-- **Reset all turbos...**: Immediately disables all turbos on all controllers. All
+- **Disable all turbos...**: Immediately disables all turbos on all controllers. All
   buttons go back to normal.
 
 
