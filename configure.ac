@@ -21,11 +21,15 @@ AC_PROG_CXX
 AX_APPEND_COMPILE_FLAGS([-std=c++23], [CXX])
 AC_LANG([C++])
 
+WIIU_WUPS_SETUP
+WIIU_WUMS_SETUP
+
 AC_CONFIG_FILES([Makefile])
 
 WIIU_WUMS_CHECK_LIBNOTIFICATIONS
 WIIU_WUMS_CHECK_LIBBUTTONCOMBO
 
-AC_CONFIG_SUBDIRS([external/libwupsxx])
+AX_SUBDIRS_CONFIGURE([external/libwupsxx],
+                     [[--enable-notify],[--enable-shortcuts]])
 
 AC_OUTPUT

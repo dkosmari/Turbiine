@@ -10,17 +10,11 @@ EXTRA_DIST = \
 SUBDIRS = external/libwupsxx
 
 
-AM_CPPFLAGS = \
-	-I$(top_srcdir)/external/libwupsxx/include \
-	$(DEVKITPRO_CPPFLAGS)
+AM_CPPFLAGS = -I$(srcdir)/external/libwupsxx/include
 
-AM_CXXFLAGS = \
-	$(DEVKITPRO_CXXFLAGS) \
-	-Wall -Wextra -Werror
+AM_CXXFLAGS = -Wall -Wextra -Werror
 
-AM_LDFLAGS = $(DEVKITPRO_LDFLAGS)
-
-LIBS = $(DEVKITPRO_LIBS)
+LDADD = external/libwupsxx/src/libwupsxx.a
 
 
 WPS_FILE = turbiine.wps
@@ -34,9 +28,6 @@ turbiine_elf_SOURCES =						\
 	src/reset_turbo_item.cpp src/reset_turbo_item.hpp	\
 	src/vpad.cpp src/vpad.hpp				\
 	src/wpad.cpp src/wpad.hpp
-
-turbiine_elf_LDADD = $(top_builddir)/external/libwupsxx/src/libwupsxx.a
-
 
 
 all-local: $(WPS_FILE)
