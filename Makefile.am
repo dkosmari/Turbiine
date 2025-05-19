@@ -14,7 +14,10 @@ AM_CPPFLAGS = -I$(srcdir)/external/libwupsxx/include
 
 AM_CXXFLAGS = -Wall -Wextra -Werror
 
-LDADD = external/libwupsxx/src/libwupsxx.a
+LDADD = \
+	external/libwupsxx/src/libwupsxx.a \
+	-lbuttoncombo \
+	-lnotifications
 
 
 WPS_FILE = turbiine.wps
