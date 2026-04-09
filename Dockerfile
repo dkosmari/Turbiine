@@ -1,12 +1,7 @@
-# FROM devkitpro/devkitppc
-FROM ghcr.io/wiiu-env/devkitppc:20241128
+FROM devkitpro/devkitppc
 
-COPY --from=ghcr.io/wiiu-env/libbuttoncombo:20250127 /artifacts $DEVKITPRO
-COPY --from=ghcr.io/wiiu-env/libnotifications:20250204 /artifacts $DEVKITPRO
-COPY --from=ghcr.io/wiiu-env/wiiupluginsystem:20250208 /artifacts $DEVKITPRO
+RUN apt-get install -y automake libtool
+RUN dkp-pacman -Syu --noconfirm
 
-RUN apt-get install -y automake
-# RUN dkp-pacman -Syu --noconfirm
-
-COPY . /project
 WORKDIR /project
+COPY . /project

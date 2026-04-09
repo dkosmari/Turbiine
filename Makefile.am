@@ -10,19 +10,28 @@ EXTRA_DIST = \
 SUBDIRS = external/libwupsxx
 
 
-AM_CPPFLAGS = -I$(srcdir)/external/libwupsxx/include
+AM_CPPFLAGS = \
+	$(WUPS_CPPFLAGS) \
+	$(LIBBUTTONCOMBO_CPPFLAGS) \
+	$(LIBNOTIFICATIONS_CPPFLAGS) \
+	-I$(srcdir)/external/libwupsxx/include
 
 AM_CXXFLAGS = -Wall -Wextra -Werror
 
+AM_LDFLAGS = $(WUPS_LDFLAGS)
+
 LDADD = \
-	external/libwupsxx/src/libwupsxx.a \
-	-lbuttoncombo \
-	-lnotifications
+	external/libwupsxx/lib/libwupsxx.la \
+	$(LIBBUTTONCOMBO_LIB) \
+	$(LIBNOTIFICATIONS_LIB) \
+	$(WUPS_LIB)
 
 
-WPS_FILE = turbiine.wps
+ELF_FILE := turbiine.elf
+WPS_FILE := $(ELF_FILE:.elf=.wps)
 
-noinst_PROGRAMS = turbiine.elf
+
+noinst_PROGRAMS = $(ELF_FILE)
 
 turbiine_elf_SOURCES =						\
 	src/cfg.cpp src/cfg.hpp					\
@@ -32,34 +41,39 @@ turbiine_elf_SOURCES =						\
 	src/vpad.cpp src/vpad.hpp				\
 	src/wpad.cpp src/wpad.hpp
 
+EXTRA_turbiine_elf_DEPENDENCIES =		\
+	external/libwupsxx/lib/libwupsxx.la	\
+	$(LIBBUTTONCOMBO_LIB)			\
+	$(LIBNOTIFICATIONS_LIB)			\
+	$(WUPS_LIB)
+
 
 all-local: $(WPS_FILE)
 
 
-install-exec-local: all
-	curl  --upload-file $(WPS_FILE) "ftp://wiiu:/fs/vol/external01/wiiu/environments/aroma/plugins/"
+.PHONY: run wiiu-install wiiu-uninstall company
 
 
-uninstall-local:
+run: $(WPS_FILE)
+	WIILOAD=tcp:wiiu wiiload $<
+
+
+wiiu-install: $(WPS_FILE)
+	curl "ftp://wiiu:/fs/vol/external01/wiiu/environments/aroma/plugins/" --upload-file $<
+
+
+wiiu-uninstall:
 	curl "ftp://wiiu" --quote "DELE /fs/vol/external01/wiiu/environments/aroma/plugins/$(WPS_FILE)"
 
 
-.PHONY: run
-run: all
-	WIILOAD=tcp:wiiu wiiload $(WPS_FILE)
-
-
-
-.PHONY: company
 company: compile_flags.txt
 
 compile_flags.txt: Makefile
-	printf "%s" "$(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS)" | xargs -n1 | sort -u > $(srcdir)/compile_flags.txt
-	$(CPP) -xc++ /dev/null -E -Wp,-v 2>&1 | sed -n 's,^ ,-I,p' >> $(srcdir)/compile_flags.txt
+	printf "%s" "$(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS)" | xargs -n1 | sort -u > compile_flags.txt
+	$(CPP) -xc++ /dev/null -E -Wp,-v 2>&1 | sed -n 's,^ ,-I,p' >> compile_flags.txt
 
-
-
-@INC_AMINCLUDE@
-DISTCLEANFILES = $(AMINCLUDE)
 
 CLEANFILES = $(WPS_FILE)
+DISTCLEANFILES = $(AMINCLUDE)
+
+@INC_AMINCLUDE@

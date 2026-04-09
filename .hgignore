@@ -2,6 +2,8 @@ syntax: glob
 
 *.a
 *.elf
+*.la
+*.lo
 *.o
 *.wps
 *~
@@ -17,6 +19,7 @@ config.h.in
 config.log
 config.status
 configure
+libtool
 Makefile
 Makefile.in
 stamp-h1

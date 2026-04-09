@@ -1,7 +1,7 @@
 /*
  * Turbiine - Turn any controller into a turbo controller.
  *
- * Copyright (C) 2025  Daniel K. O.
+ * Copyright (C) 2025-2026  Daniel K. O.
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
@@ -114,7 +114,11 @@ namespace cfg {
         // keep logger enabled until menu is closed
         logger::initialize();
 
-        root.add(make_item(enabled, "yes", "no"));
+        root.add(make_item(enabled,
+                           {
+                               .true_label = "yes",
+                               .false_label = "no"
+                           }));
         root.add(make_item(period));
         root.add(make_item(toggle1, toggle1_handle));
         root.add(make_item(toggle2, toggle2_handle));
