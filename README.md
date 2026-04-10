@@ -88,11 +88,14 @@ This is a standard Automake package; a Docker build script is also provided.
 
 - [libbuttoncombo](https://github.com/wiiu-env/libbuttoncombo)
 
+If you cloned the repository with git, make sure you used the `--recurse-submodules` option.
+Otherwise, there's the script `external/update-submodules.sh` you can execute, that will obtain the submodules.
+
 If you got a release tarball (`.tar.gz`) you can skip step 0.
 
 0. `./bootstrap`
 
-1. `./configure --host=powerpc-eabi CXXFLAGS='-Os'`
+1. `./configure --host=powerpc-eabi CXXFLAGS='-Os -ffunction-sections -fdata-sections -fipa-pta'`
 
 2. `make`
 
