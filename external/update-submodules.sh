@@ -7,8 +7,8 @@ NONE=$(tput sgr0)
 
 update_submodule()
 {
-    echo "${GREEN}${1}${NONE}: '${YELLOW}git submodule update --recursive${NONE}'"
-    (cd "$1" && git submodule update --recursive) || exit 1
+    echo "${GREEN}${1}${NONE}: '${YELLOW}git submodule init && git submodule update --recursive${NONE}'"
+    (cd "$1" && git submodule init && git submodule update --recursive) || exit 1
 }
 
 
