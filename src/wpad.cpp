@@ -1,7 +1,7 @@
 /*
  * Turbiine - Turn any controller into a turbo controller.
  *
- * Copyright (C) 2025  Daniel K. O.
+ * Copyright (C) 2025-2026  Daniel K. O.
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
@@ -22,6 +22,7 @@
 #include "wpad.hpp"
 
 #include "cfg.hpp"
+#include "turbo_toggling.hpp"
 
 
 using std::array;
@@ -76,7 +77,7 @@ namespace wpad {
     namespace core {
 
         struct button_info_t {
-            WPADButton button;
+            uint16_t button;
             const char* name;
             const char* glyph;
         };
@@ -104,7 +105,7 @@ namespace wpad {
         namespace nunchuk {
 
             struct button_info_t {
-                WPADNunchukButton button;
+                uint16_t button;
                 const char* name;
                 const char* glyph;
             };
@@ -122,7 +123,7 @@ namespace wpad {
         namespace classic {
 
             struct button_info_t {
-                WPADClassicButton button;
+                uint32_t button;
                 const char* name;
                 const char* glyph;
             };
@@ -152,7 +153,7 @@ namespace wpad {
         namespace pro {
 
             struct button_info_t {
-                WPADProButton button;
+                uint32_t button;
                 const char* name;
                 const char* glyph;
             };
@@ -192,9 +193,9 @@ namespace wpad {
              unsigned N>
     struct state_t {
 
-        T turbo     = 0;
-        T fake_hold = 0;
         array<OSTime, N> last_turbo_action{};
+        T turbinated = 0;
+        T turbo_hold = 0;
         button_tracker<T> tracker;
 
 
@@ -202,9 +203,9 @@ namespace wpad {
         reset()
             noexcept
         {
-            turbo     = 0;
-            fake_hold = 0;
             last_turbo_action.fill(0);
+            turbinated = 0;
+            turbo_hold = 0;
             tracker.reset();
         }
 
@@ -217,27 +218,25 @@ namespace wpad {
         }
 
 
-        template<typename BTN>
         void
         process_buttons(WPADChan channel,
-                        BTN& buttons,
-                        bool& toggling,
+                        auto& buttons,
+                        turbo_toggling& toggling,
                         OSTime period,
+                        OSTime now,
                         const auto& button_list)
         {
-            tracker.update(buttons);
-
             for (auto [idx, info] : enumerate(button_list)) {
-                auto [btn, btn_name, btn_glyph] = info;
-                const auto not_btn = ~static_cast<BTN>(btn);
+                auto [btn_flag, btn_name, btn_glyph] = info;
 
-                // Turbo toggling logic.
-                if (toggling && (tracker.trigger & btn)) [[unlikely]]{
+                // Turbo toggling logic: from `reading' state we check for triggers.
+                if (toggling == turbo_toggling::reading
+                    && (tracker.trigger & btn_flag)) [[unlikely]] {
 
-                    toggling = false;
-                    turbo ^= btn;
+                    toggling = turbo_toggling::normal;
+                    turbinated ^= btn_flag;
 
-                    const char* on_off = turbo & btn ? "turbo" : "normal";
+                    const char* on_off = turbinated & btn_flag ? "turbo" : "normal";
 
                     logger::printf("WPAD %d button %s is %s\n",
                                    int(channel),
@@ -249,10 +248,10 @@ namespace wpad {
                                        on_off);
 
                     // Hide this press from the game.
-                    buttons &= not_btn;
+                    buttons &= ~btn_flag;
 
                     // Block this button until it's released.
-                    tracker.suppress |= btn;
+                    tracker.suppress |= btn_flag;
 
                     last_turbo_action[idx] = 0;
 
@@ -260,39 +259,37 @@ namespace wpad {
 
                 }
 
-                OSTime now = OSGetSystemTime();
-
-                if (tracker.trigger & btn) {
+                if (tracker.trigger & btn_flag) [[unlikely]] {
                     // Button was just pressed.
-                    fake_hold |= btn;
+                    turbo_hold |= btn_flag;
                     last_turbo_action[idx] = now;
                     continue;
                 }
 
-                if (tracker.release & btn) {
+                if (tracker.release & btn_flag) [[unlikely]] {
                     // Button was just released.
-                    fake_hold &= not_btn;
+                    turbo_hold &= ~btn_flag;
                     last_turbo_action[idx] = 0;
                     continue;
                 }
 
                 // If button is held and turbinated, do turbo action.
-                if (buttons & btn && turbo & btn) {
+                if (buttons & btn_flag && turbinated & btn_flag) {
                     OSTime age = now - last_turbo_action[idx];
                     if (age >= period) {
                         // time to generate turbo events
                         last_turbo_action[idx] = now;
-                        fake_hold ^= btn;
-                        if (fake_hold & btn) {
+                        turbo_hold ^= btn_flag;
+                        if (turbo_hold & btn_flag) {
                             // simulate a press event
-                            buttons |= btn;
+                            buttons |=  btn_flag;
                         } else {
                             // simulate a release event
-                            buttons &= not_btn;
+                            buttons &= ~btn_flag;
                         }
                     } else {
-                        // in between turbo events, just copy fake_hold
-                        buttons = (buttons & not_btn) | (fake_hold & btn);
+                        // in between turbo events, just copy turbo_hold
+                        buttons = (buttons & ~btn_flag) | (turbo_hold & btn_flag);
                     }
                 } // if turbo action
 
@@ -307,7 +304,7 @@ namespace wpad {
 
         state_t<uint16_t, core::num_buttons> core;
         state_t<uint32_t, ext::num_buttons>  ext;
-        bool toggling = false;
+        turbo_toggling toggling = turbo_toggling::normal;
         WPADExtensionType ext_type = WPAD_EXT_CORE;
 
 
@@ -317,74 +314,113 @@ namespace wpad {
         {
             core.reset();
             ext.reset();
-            toggling = false;
+            toggling = turbo_toggling::normal;
             ext_type = WPAD_EXT_CORE;
-        }
-
-
-        bool
-        flip_toggling()
-            noexcept
-        {
-            return toggling = !toggling;
         }
 
 
         void
         process_wpad_read(WPADChan channel,
                           WPADStatus* status,
-                          OSTime period)
+                          OSTime period,
+                          OSTime now)
         {
             if (ext_type != status->extensionType) {
                 ext.reset();
                 ext_type = static_cast<WPADExtensionType>(status->extensionType);
             }
 
+            auto& core_buttons = status->buttons;
             switch (ext_type) {
                 case WPAD_EXT_CORE:
-                case WPAD_EXT_MPLUS:
+                case WPAD_EXT_MPLUS: {
+                    core.tracker.update(core_buttons);
+                    // Turbo toggling logic: if all buttons were released we can transition
+                    // waiting -> reading.
+                    if (toggling == turbo_toggling::waiting
+                        && core.tracker.hold == 0) [[unlikely]]
+                        toggling = turbo_toggling::reading;
+
                     core.process_buttons(channel,
-                                         status->buttons,
+                                         core_buttons,
                                          toggling,
                                          period,
+                                         now,
                                          core::button_list);
                     break;
+                }
 
                 case WPAD_EXT_NUNCHUK:
-                case WPAD_EXT_MPLUS_NUNCHUK:
+                case WPAD_EXT_MPLUS_NUNCHUK: {
+                    auto& ext_buttons = core_buttons;
+                    core.tracker.update(core_buttons);
+                    ext.tracker.update(ext_buttons);
+                    // Turbo toggling logic: if all buttons were released we can transition
+                    // waiting -> reading.
+                    if (toggling == turbo_toggling::waiting
+                        && core.tracker.hold == 0
+                        && ext.tracker.hold == 0) [[unlikely]]
+                        toggling = turbo_toggling::reading;
+
                     core.process_buttons(channel,
-                                         status->buttons,
+                                         core_buttons,
                                          toggling,
                                          period,
+                                         now,
                                          core::button_list);
                     ext.process_buttons(channel,
-                                        status->buttons,
+                                        ext_buttons,
                                         toggling,
                                         period,
+                                        now,
                                         ext::nunchuk::button_list);
                     break;
+                }
 
                 case WPAD_EXT_CLASSIC:
-                case WPAD_EXT_MPLUS_CLASSIC:
+                case WPAD_EXT_MPLUS_CLASSIC: {
+                    auto& ext_buttons = reinterpret_cast<WPADStatusClassic*>(status)->buttons;
+                    core.tracker.update(core_buttons);
+                    ext.tracker.update(ext_buttons);
+                    // Turbo toggling logic: if all buttons were released we can transition
+                    // waiting -> reading.
+                    if (toggling == turbo_toggling::waiting
+                        && core.tracker.hold == 0
+                        && ext.tracker.hold == 0) [[unlikely]]
+                        toggling = turbo_toggling::reading;
+
                     core.process_buttons(channel,
-                                         status->buttons,
+                                         core_buttons,
                                          toggling,
                                          period,
+                                         now,
                                          core::button_list);
                     ext.process_buttons(channel,
-                                        reinterpret_cast<WPADStatusClassic*>(status)->buttons,
+                                        ext_buttons,
                                         toggling,
                                         period,
+                                        now,
                                         ext::classic::button_list);
                     break;
+                }
 
-                case WPAD_EXT_PRO_CONTROLLER:
+                case WPAD_EXT_PRO_CONTROLLER: {
+                    auto& ext_buttons = reinterpret_cast<WPADStatusPro*>(status)->buttons;
+                    ext.tracker.update(ext_buttons);
+                    // Turbo toggling logic: if all buttons were released we can transition
+                    // waiting -> reading.
+                    if (toggling == turbo_toggling::waiting
+                        && ext.tracker.hold == 0) [[unlikely]]
+                        toggling = turbo_toggling::reading;
+
                     ext.process_buttons(channel,
-                                        reinterpret_cast<WPADStatusPro*>(status)->buttons,
+                                        ext_buttons,
                                         toggling,
                                         period,
+                                        now,
                                         ext::pro::button_list);
                     break;
+                }
 
                 default:
                     ;
@@ -412,10 +448,20 @@ namespace wpad {
     void
     on_toggle(WPADChan channel)
     {
-        if (states[channel].flip_toggling())
-            notify::info::show("Toggling turbo on wiimote %d...", int(channel) + 1);
-        else
-            notify::info::show("Canceled turbo toggle on wiimote %d.", int(channel) + 1);
+        switch (states[channel].toggling) {
+            using enum turbo_toggling;
+
+            case normal:
+                notify::info::show("Toggling turbo on wiimote %d...", int(channel) + 1);
+                states[channel].toggling = waiting;
+                break;
+
+            case waiting:
+            case reading:
+                notify::info::show("Canceled turbo toggle on wiimote %d.", int(channel) + 1);
+                states[channel].toggling = normal;
+                break;
+        }
     }
 
 
@@ -434,9 +480,10 @@ namespace wpad {
         if (status->error)
             return;
 
+        OSTime now = OSGetSystemTime();
         OSTime period = OSMillisecondsToTicks(cfg::period.value.count());
         auto& state = states[channel];
-        state.process_wpad_read(channel, status, period);
+        state.process_wpad_read(channel, status, period, now);
     }
 
     WUPS_MUST_REPLACE(WPADRead, WUPS_LOADER_LIBRARY_PADSCORE, WPADRead);

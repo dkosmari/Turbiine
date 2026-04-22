@@ -33,12 +33,14 @@ WPS_FILE := $(ELF_FILE:.elf=.wps)
 
 noinst_PROGRAMS = $(ELF_FILE)
 
-turbiine_elf_SOURCES =						\
-	src/cfg.cpp src/cfg.hpp					\
-	src/core.cpp src/core.hpp				\
-	src/main.cpp						\
-	src/reset_turbo_item.cpp src/reset_turbo_item.hpp	\
-	src/vpad.cpp src/vpad.hpp				\
+turbiine_elf_SOURCES =			\
+	src/cfg.cpp src/cfg.hpp		\
+	src/core.cpp src/core.hpp	\
+	src/main.cpp			\
+	src/reset_turbo_item.cpp	\
+	src/reset_turbo_item.hpp	\
+	src/turbo_toggling.hpp		\
+	src/vpad.cpp src/vpad.hpp	\
 	src/wpad.cpp src/wpad.hpp
 
 EXTRA_turbiine_elf_DEPENDENCIES =		\
