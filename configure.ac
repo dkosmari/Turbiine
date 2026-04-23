@@ -3,7 +3,7 @@
 
 AC_PREREQ([2.71])
 AC_INIT([Turbiine],
-        [1.1-pre2+],
+        [1.1],
         [https://github.com/dkosmari/Turbiine/issues],
         [turbiine],
         [https://github.com/dkosmari/Turbiine])
