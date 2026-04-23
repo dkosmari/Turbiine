@@ -82,12 +82,6 @@ This is a standard Automake package; a Docker build script is also provided.
 - [wut](https://github.com/devkitPro/wut/) - currently, the devkitPro package is too old,
   you will need to compile and install the current wut from the repository.
 
-- [WiiUPluginSystem](https://github.com/wiiu-env/WiiUPluginSystem)
-
-- [libnotifications](https://github.com/wiiu-env/libnotifications)
-
-- [libbuttoncombo](https://github.com/wiiu-env/libbuttoncombo)
-
 If you cloned the repository with git, make sure you used the `--recurse-submodules` option.
 Otherwise, there's the script `external/update-submodules.sh` you can execute, that will obtain the submodules.
 
