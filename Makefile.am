@@ -16,7 +16,9 @@ AM_CPPFLAGS = \
 	$(LIBNOTIFICATIONS_CPPFLAGS) \
 	-I$(srcdir)/external/libwupsxx/include
 
-AM_CXXFLAGS = -Wall -Wextra -Werror
+AM_CXXFLAGS = \
+	-Wall -Wextra -Werror \
+	-pthread
 
 AM_LDFLAGS = $(WUPS_LDFLAGS)
 

@@ -16,7 +16,7 @@ AC_CANONICAL_HOST
 
 DEVKITPRO_WUT_INIT
 
-AM_INIT_AUTOMAKE([foreign subdir-objects])
+AM_INIT_AUTOMAKE([foreign subdir-objects tar-pax])
 
 LT_INIT([disable-shared])
 
@@ -24,13 +24,15 @@ AC_PROG_CXX
 AC_LANG([C++])
 AX_APPEND_COMPILE_FLAGS([-std=c++23], [CXX])
 
-WIIU_ENV_SETUP_WUPS([external/libwupsxx/external/WiiUPluginSystem])
 WIIU_ENV_SETUP_LIBBUTTONCOMBO([external/libwupsxx/external/libbuttoncombo])
 WIIU_ENV_SETUP_LIBNOTIFICATIONS([external/libwupsxx/external/libnotifications])
+WIIU_ENV_SETUP_WUPS([external/libwupsxx/external/WiiUPluginSystem])
 
 AC_CONFIG_FILES([Makefile])
 
 AX_SUBDIRS_CONFIGURE([external/libwupsxx],
-                     [[--enable-notify],[--enable-shortcuts]])
+                     [[--enable-notify],
+                      [--enable-shortcuts],
+                      [CXXFLAGS=$CXXFLAGS -pthread]])
 
 AC_OUTPUT
